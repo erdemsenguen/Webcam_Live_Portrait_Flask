@@ -5,7 +5,7 @@ import os
 import html
 
 class APIServer:
-    def __init__(self,function:callable, host="127.0.0.1", port=5000, source_img_dir:str=None,):
+    def __init__(self,set_source_funct:callable,stop_funct:callable,status_funct:callable,run_funct:callable, host="127.0.0.1", port=5001, source_img_dir:str=None,):
         self.host = host
         self.port = port
         self.app = Flask(__name__)
@@ -14,8 +14,10 @@ class APIServer:
         self._thread=None
         self.source_img_dir=source_img_dir
         self.extensions = ('.jpg')
-        self.function=function
-
+        self.set_source_funtc=set_source_funct
+        self.stop_funct=stop_funct,
+        self.status_funct=status_funct,
+        self.run_funct=run_funct
         # Get files and remove extensions
         self.file_names = [
                         os.path.splitext(f)[0]
@@ -23,35 +25,41 @@ class APIServer:
                         if f.lower().endswith(self.extensions)
                     ]
     def _register_routes(self):
-        @self.app.route("/api/data", methods=["POST"])
+        @self.app.route("/api/data", methods=["POST","GET"])
         def handle_request():
             import platform
             if platform.system() == "Windows":
                 import pythoncom
                 pythoncom.CoInitialize()
-            json_data = request.get_json()
-            j_input = html.escape(json_data.get("input"))
-            if j_input:
-                if self.source_img_dir==None:
-                    return jsonify({
-                    "error": "Server initialization error, Image directory does not exist."
-                }), 401
-                else:
-                    inp=str(j_input)
-                    if inp in self.file_names:
-                        try:
-                            self.function(f"{self.source_img_dir}/{j_input}.jpg")
-                            return jsonify({"status": "success", "input": j_input}), 200
-                        except Exception as e:
-                            print(e)
-                            return jsonify({"error": f"Software exception occured \n{e}"}),404
+            if request.method == "POST":
+                json_data = request.get_json()
+                j_input = html.escape(json_data.get("input"))
+                if j_input:
+                    if self.source_img_dir==None:
+                        return jsonify({
+                        "error": "Server initialization error, Image directory does not exist."
+                    }), 401
                     else:
-                        return jsonify({"error": f"Specified file does not exist."})
-            if j_input is None:
-                return jsonify({
-                    "error": "Data type is not supported. Send a JSON with 'type' key."
-                }), 400
-
+                        inp=str(j_input)
+                        if inp in self.file_names:
+                            try:
+                                self.function(f"{self.source_img_dir}/{j_input}.jpg")
+                                return jsonify({"status": "success", "input": j_input}), 200
+                            except Exception as e:
+                                print(e)
+                                return jsonify({"error": f"Software exception occured \n{e}"}),404
+                        else:
+                            return jsonify({"error": f"Specified file does not exist."})
+                if j_input is None:
+                    return jsonify({
+                        "error": "Data type is not supported. Send a JSON with 'type' key."
+                    }), 400
+            elif request.method =="GET":
+                return jsonify({"status": self.status_funct()}),200
+        @self.app.route("/api/run", methods=["GET"])
+        def handle_run_request():
+            self.run_funct()
+            return jsonify({"status":"Running"}),200            
     def start(self):
         self._thread = threading.Thread(
             target=lambda: self.app.run(
@@ -62,4 +70,5 @@ class APIServer:
         self._thread.start()
     
     def kill(self):
+        self.stop_funct
         self._thread.join(timeout=1)

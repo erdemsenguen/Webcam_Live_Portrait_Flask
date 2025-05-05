@@ -30,30 +30,36 @@ class Inference:
         )
         # Get the directory of the current script
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
-
+        self.running=False
+        self.active=False
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.jpg')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
         # Initialize webcam 'assets/examples/driving/d6.mp4'
-        self.cap = cv2.VideoCapture(0)
         self.backend=None
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-
-        # Process the first frame to initialize
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Failed to capture image")
-            return
         with pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
              pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+            black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
             while True:
-                if self.stop_signal:
+                if not self.running:
+                    cam.send(black_image)
+                    cam2.send(black_image)
+                    continue
+                else:
                     break
-                ret, frame = self.cap.read()
+            cap = cv2.VideoCapture(0)
+                # Process the first frame to initialize
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to capture image")
+                return
+            while True:    
+                ret, frame = cap.read()
                 if not ret:
                     break
                 cam2.send(frame)
@@ -63,9 +69,11 @@ class Inference:
                 self.first_iter=False
                 # Process the frame
                 if is_face and self.source_image_path:
+                    self.active=True
                     result = self.live_portrait_pipeline.generate_frame(x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb, frame)
                     cam.send(result)
                 else:
+                    self.active=False
                     self.source_image_path=None
                     self.first_iter=True
                     overlay_resized = cv2.resize(self.overlay, (frame.shape[1], frame.shape[0]))
@@ -103,6 +111,10 @@ class Inference:
         except Exception as e:
             self.source_image_path=None
             return e
+    def status_funct(self):
+        return(self.active)
+    def set_run(self):
+        self.running=True
     def stop(self):
         self.stop_signal=True
 if __name__ == '__main__':
