@@ -33,7 +33,7 @@ class Inference:
         self.running=False
         self.active=False
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
-        frame_path = os.path.join(self.script_dir, 'assets', 'frame.jpg')
+        frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
@@ -72,15 +72,20 @@ class Inference:
                 # Process the frame
                 if is_face and self.source_image_path:
                     self.active=True
+                    pad=black_image
                     result = self.live_portrait_pipeline.generate_frame(x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb, frame)
-                    cam.send(result)
+                    result_height,result_width=result.shape[:2]
+                    x_offset=(1920-result_width)//2
+                    y_offset=(1080-result_height)//2
+                    pad[y_offset:y_offset+result_height,x_offset+result_width]=result
+                    cam.send(pad)
                 else:
                     self.active=False
                     self.source_image_path=None
                     self.first_iter=True
                     overlay_resized = cv2.resize(self.overlay, (frame.shape[1], frame.shape[0]))
                     overlay_rgb = overlay_resized[..., :3]     
-                    alpha_mask = overlay_resized[..., 3:] / 255.0
+                    alpha_mask = overlay_resized[..., 3:]
                     blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
                     cam.send(blended)
