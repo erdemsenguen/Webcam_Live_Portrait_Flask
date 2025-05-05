@@ -53,6 +53,8 @@ class Inference:
                 else:
                     break
             cap = cv2.VideoCapture(0)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,1080)
                 # Process the first frame to initialize
             ret, frame = cap.read()
             if not ret:
