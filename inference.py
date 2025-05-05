@@ -64,7 +64,7 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame= cv2.resize(frame,(1080,1920))
+                frame= cv2.resize(frame,(1920,1080))
                 cam2.send(frame)
                 is_face = face_detector(frame)
                 if self.first_iter == True and self.source_image_path!=None:
