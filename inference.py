@@ -64,6 +64,7 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
+                frame= cv2.resize(frame,(1080,1920))
                 cam2.send(frame)
                 is_face = face_detector(frame)
                 if self.first_iter == True and self.source_image_path!=None:
@@ -88,7 +89,6 @@ class Inference:
                     alpha_mask = overlay_resized[..., 3:]
                     blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
-                    blended = cv2.resize(blended,(1080,1920))
                     cam.send(blended)
                 #cv2.imshow('img_rgb Image', img_rgb)
                 #cv2.imshow('Source Frame', frame)
