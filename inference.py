@@ -6,7 +6,7 @@ from .src.live_portrait_pipeline import LivePortraitPipeline
 from .src.crop import face_detector
 from .src.utils.io import load_image_rgb
 import cv2
-import time
+import logging
 import numpy as np
 import platform
 import pyvirtualcam
@@ -17,6 +17,7 @@ class Inference:
     def __init__(self):
         tyro.extras.set_accent_color("bright_cyan")
         self.args = tyro.cli(ArgumentConfig)
+        self.logger=logging.getLogger(__name__)
         self.is_face= None
         self.first_iter=True
         # specify configs for inference
@@ -64,8 +65,8 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame= cv2.resize(frame,(1920,1080))
-                cam2.send(frame)
+                frame_fhd= cv2.resize(frame,(1920,1080))
+                cam2.send(frame_fhd)
                 is_face = face_detector(frame)
                 if self.first_iter == True and self.source_image_path!=None:
                     x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
@@ -84,10 +85,14 @@ class Inference:
                     self.active=False
                     self.source_image_path=None
                     self.first_iter=True
-                    overlay_resized = cv2.resize(self.overlay, (frame.shape[1], frame.shape[0]))
-                    overlay_rgb = overlay_resized[..., :3]     
-                    alpha_mask = overlay_resized[..., 3:]
-                    blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
+                    overlay_resized = cv2.resize(self.overlay, (frame_fhd.shape[1], frame_fhd.shape[0]))
+                    overlay_rgb = overlay_resized[..., :3]
+                    try:
+                        alpha_mask = self.overlay[..., 3:]/255
+                    except Exception as e:
+                        alpha_mask= np.full((1080,1920,1),0.4)
+                        self.logger.error(e) 
+                    blended = (1.0 - alpha_mask) * frame_fhd + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
                     cam.send(blended)
                 #cv2.imshow('img_rgb Image', img_rgb)
