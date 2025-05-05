@@ -88,6 +88,7 @@ class Inference:
                     alpha_mask = overlay_resized[..., 3:]
                     blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
+                    blended = cv2.resize(blended,(1080,1920))
                     cam.send(blended)
                 #cv2.imshow('img_rgb Image', img_rgb)
                 #cv2.imshow('Source Frame', frame)
