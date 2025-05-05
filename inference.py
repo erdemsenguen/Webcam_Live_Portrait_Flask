@@ -66,6 +66,7 @@ class Inference:
                 if not ret:
                     break
                 frame_fhd= cv2.resize(frame,(1920,1080))
+                frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_fhd)
                 is_face = face_detector(frame)
                 if self.first_iter == True and self.source_image_path!=None:
@@ -94,6 +95,8 @@ class Inference:
                         self.logger.error(e) 
                     blended = (1.0 - alpha_mask) * frame_fhd + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
+                    blended = cv2.resize(blended(1920,1080))
+                    blended = cv2.cvtColor(blended, cv2.COLOR_BGR2RGB)
                     cam.send(blended)
                 #cv2.imshow('img_rgb Image', img_rgb)
                 #cv2.imshow('Source Frame', frame)
