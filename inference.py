@@ -1,10 +1,10 @@
 import tyro
-from src.config.argument_config import ArgumentConfig
-from src.config.inference_config import InferenceConfig
-from src.config.crop_config import CropConfig
-from src.live_portrait_pipeline import LivePortraitPipeline
-from src.crop import face_detector
-from src.utils.io import load_image_rgb
+from .src.config.argument_config import ArgumentConfig
+from .src.config.inference_config import InferenceConfig
+from .src.config.crop_config import CropConfig
+from .src.live_portrait_pipeline import LivePortraitPipeline
+from .src.crop import face_detector
+from .src.utils.io import load_image_rgb
 import cv2
 import time
 import numpy as np
