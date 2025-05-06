@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import html
+import logging
 
 class APIServer:
     def __init__(self,set_source_funct:callable,stop_funct:callable,status_funct:callable,run_funct:callable, host="127.0.0.1", port=5001, source_img_dir:str=None,):
@@ -14,10 +15,11 @@ class APIServer:
         self._thread=None
         self.source_img_dir=source_img_dir
         self.extensions = ('.jpg')
-        self.set_source_funtc=set_source_funct
-        self.stop_funct=stop_funct,
-        self.status_funct=status_funct,
+        self.set_source_funct=set_source_funct
+        self.stop_funct=stop_funct
+        self.status_funct=status_funct
         self.run_funct=run_funct
+        self.logger=logging.getLogger(__name__)
         # Get files and remove extensions
         self.file_names = [
                         os.path.splitext(f)[0]
@@ -43,7 +45,7 @@ class APIServer:
                         inp=str(j_input)
                         if inp in self.file_names:
                             try:
-                                self.function(f"{self.source_img_dir}/{j_input}.jpg")
+                                self.set_source_funct(f"{self.source_img_dir}/{j_input}.jpg")
                                 return jsonify({"status": "success", "input": j_input}), 200
                             except Exception as e:
                                 print(e)
@@ -52,7 +54,7 @@ class APIServer:
                             return jsonify({"error": f"Specified file does not exist."})
                 if j_input is None:
                     return jsonify({
-                        "error": "Data type is not supported. Send a JSON with 'type' key."
+                        "error": "Data type is not supported. Send a JSON with 'input' key."
                     }), 400
             elif request.method =="GET":
                 return jsonify({"status": self.status_funct()}),200
@@ -70,5 +72,5 @@ class APIServer:
         self._thread.start()
     
     def kill(self):
-        self.stop_funct
+        self.stop_funct()
         self._thread.join(timeout=1)

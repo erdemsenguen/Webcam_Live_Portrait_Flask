@@ -38,6 +38,10 @@ class Inference:
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
+        self.log_counter_face_start=0
+        self.log_counter_face_success=0
+        self.log_counter_cam_dupe=0
+        self.log_counter_cam_dupe_success=0
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
@@ -68,35 +72,54 @@ class Inference:
                 frame_fhd= cv2.resize(frame,(1920,1080))
                 frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_fhd)
-                is_face = face_detector(frame)
+                is_face = face_detector(frame_fhd)
                 if self.first_iter == True and self.source_image_path!=None:
+                    self.logger.debug("DeepFake source image is set!")
                     x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
-                self.first_iter=False
+                    self.first_iter=False
                 # Process the frame
                 if is_face and self.source_image_path:
+                    self.log_counter_cam_dupe=0
+                    self.log_counter_cam_dupe_success=0
+                    if self.log_counter_face_start==0:
+                        self.logger.debug("Face recognized, running the face manipulation.")
+                        self.log_counter_face_start+=1
                     self.active=True
                     pad=black_image
                     result = self.live_portrait_pipeline.generate_frame(x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb, frame)
                     result_height,result_width=result.shape[:2]
+                    if result_height>1080:
+                        result=cv2.resize(result,(int(result_width*1080/result_height),1080))
                     x_offset=(1920-result_width)//2
                     y_offset=(1080-result_height)//2
                     pad[y_offset:y_offset+result_height,x_offset+result_width]=result
+                    if self.log_counter_face_success==0:
+                        self.logger.debug("Face control established.")
+                        self.log_counter_face_success+=1
                     cam.send(pad)
                 else:
+                    self.log_counter_face_success=0
+                    self.log_counter_face_start=0
+                    if self.log_counter_cam_dupe==0:
+                        self.logger.debug("Face not found, duplicating the cam input.")
+                        self.log_counter_cam_dupe+=1
                     self.active=False
                     self.source_image_path=None
                     self.first_iter=True
                     overlay_resized = cv2.resize(self.overlay, (frame_fhd.shape[1], frame_fhd.shape[0]))
                     overlay_rgb = overlay_resized[..., :3]
                     try:
-                        alpha_mask = self.overlay[..., 3:]/255
+                        alpha_mask = overlay_rgb[..., 3:]/255
                     except Exception as e:
-                        alpha_mask= np.full((1080,1920,1),0.4)
+                        alpha_mask= np.full((1080,1920),0.4)
                         self.logger.error(e) 
                     blended = (1.0 - alpha_mask) * frame_fhd + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
-                    blended = cv2.resize(blended(1920,1080))
+                    blended = cv2.resize(blended,(1920,1080))
                     blended = cv2.cvtColor(blended, cv2.COLOR_BGR2RGB)
+                    if self.log_counter_cam_dupe_success==0:
+                        self.logger.debug("Duplicated camera feed is succesful.")
+                        self.log_counter_cam_dupe_success+=1
                     cam.send(blended)
                 #cv2.imshow('img_rgb Image', img_rgb)
                 #cv2.imshow('Source Frame', frame)
@@ -109,7 +132,7 @@ class Inference:
 
                 # Press 'q' to exit the loop
             # When everything is done, release the capture
-            self.cap.release()        
+            cap.release()        
         # live_portrait_pipeline.execute_frame(result_bgr)
     def conf_virt_live_webcam(self):
         if platform.system() == "Windows":
