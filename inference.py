@@ -36,6 +36,7 @@ class Inference:
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
+        self.overlay=cv2.cvtColor(frame_path,cv2.COLOR_BGR2RGB)
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
@@ -83,8 +84,10 @@ class Inference:
                     if self.log_counter_face_start==0:
                             self.logger.debug("Face found.")
                             self.log_counter_face_start+=1
-                    if self.source_image_path:
-                        self.manipulation(cam=cam,frame=frame_fhd)
+                    if (self.x_s and self.f_s and self.R_s and self.x_s_info and self.lip_delta_before_animation and self.crop_info and self.img_rgb):
+                        self.manipulation(cam=cam,frame=frame)
+                    else:
+                        self.no_manipulation(cam=cam,frame=frame_fhd)
                 else:
                     self.no_manipulation(cam=cam,frame=frame_fhd)
             cap.release()        
@@ -106,6 +109,7 @@ class Inference:
             self.log_counter_face_success+=1
         cam.send(pad)
     def no_manipulation(self,cam,frame):
+        self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
         self.log_counter_face_success=0
         self.log_counter_face_start=0
         if self.log_counter_cam_dupe==0:
