@@ -14,19 +14,11 @@ class APIServer:
         self._register_routes()
         self._thread=None
         self.source_img_dir=source_img_dir
-        self.app.logger.handlers.clear()
         self.extensions = ('.jpg')
         self.set_source_funct=set_source_funct
         self.stop_funct=stop_funct
         self.status_funct=status_funct
         self.run_funct=run_funct
-        self.werkzeug_logger = logging.getLogger('werkzeug')
-        self.werkzeug_logger.setLevel(logging.DEBUG)
-        self.logger=logging.getLogger(__name__)
-        if self.logger.hasHandlers():
-            handler=self.logger.handlers[0]
-            self.app.logger.addHandler(handler)
-            self.werkzeug_logger.addHandler(handler)
         # Get files and remove extensions
         self.file_names = [
                         os.path.splitext(f)[0]
