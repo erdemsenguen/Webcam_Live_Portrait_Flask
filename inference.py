@@ -117,7 +117,6 @@ class Inference:
                     blended = (1.0 - alpha_mask) * frame_fhd + alpha_mask * overlay_rgb
                     blended = blended.astype(np.uint8)
                     blended = cv2.resize(blended,(1920,1080))
-                    blended = cv2.cvtColor(blended, cv2.COLOR_BGR2RGB)
                     if self.log_counter_cam_dupe_success==0:
                         self.logger.debug("Duplicated camera feed is succesful.")
                         self.log_counter_cam_dupe_success+=1
