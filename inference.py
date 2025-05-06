@@ -72,7 +72,8 @@ class Inference:
                 frame_fhd= cv2.resize(frame,(1920,1080))
                 frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_fhd)
-                is_face = face_detector(frame_fhd)
+                frame_small= cv2.resize(frame,(640,640))
+                is_face = face_detector(frame_small)
                 if self.first_iter == True and self.source_image_path!=None:
                     self.logger.debug("DeepFake source image is set!")
                     x_s, f_s, R_s, x_s_info, lip_delta_before_animation, crop_info, img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
@@ -109,7 +110,7 @@ class Inference:
                     overlay_resized = cv2.resize(self.overlay, (frame_fhd.shape[1], frame_fhd.shape[0]))
                     overlay_rgb = overlay_resized[..., :3]
                     try:
-                        alpha_mask = overlay_rgb[..., 3:]/255
+                        alpha_mask = overlay_resized[..., 3:]/255
                     except Exception as e:
                         alpha_mask= np.full((1080,1920),0.4)
                         self.logger.error(e) 
