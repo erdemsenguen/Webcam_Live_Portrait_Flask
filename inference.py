@@ -37,7 +37,6 @@ class Inference:
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-        self.overlay=cv2.cvtColor(frame_path,cv2.COLOR_BGR2RGB)
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
