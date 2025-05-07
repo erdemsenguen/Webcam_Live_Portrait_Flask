@@ -73,8 +73,7 @@ class Inference:
                 frame_fhd= cv2.resize(frame,(1920,1080))
                 frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_fhd)
-                frame_small= cv2.resize(frame,(640,640))
-                is_face = face_detector(frame_small)
+                is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
                     self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
