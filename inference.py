@@ -44,7 +44,6 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.log_counter_face_not_found=0
-        self.black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
         self.x_s=None
         self.f_s=None
         self.R_s=None
@@ -59,12 +58,14 @@ class Inference:
     def main(self):
         with pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
              pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+            black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
             while True:
                 if not self.running:
-                    cam.send(self.black_image)
-                    cam2.send(self.black_image)
+                    cam.send(black_image)
+                    cam2.send(black_image)
                     continue
                 else:
+                    black_image=None
                     break
             cap = cv2.VideoCapture(0)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
@@ -109,7 +110,7 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
-        pad=self.black_image
+        pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
         if result_height>1080:
