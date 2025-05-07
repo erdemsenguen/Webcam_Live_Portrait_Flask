@@ -112,11 +112,21 @@ class Inference:
         pad=self.black_image
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
+        print(f"Result Height before manipulation:{result_height}\nResult Width before manipulation:{result_width}")
+        print(result_width)
         if result_height>1080:
             result=cv2.resize(result,(int(result_width*1080/result_height),1080))
-        x_offset=(1920-result_width)//2
-        y_offset=(1080-result_height)//2
-        pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
+        result_height,result_width=result.shape[:2]
+        print(f"Result Height after first manipulation:{result_height}\nResult Width after first manipulation:{result_width}")
+        if result_width>1920:
+            result=cv2.resize(result,(1920,int(result_height*1920/result_width)))
+        result_height,result_width=result.shape[:2]
+        print(f"Result Height after second manipulation:{result_height}\nResult Width after second manipulation:{result_width}")
+        if y_offset + result_height > 1080 or x_offset + result_width > 1920:
+            x_offset=(1920-result_width)//2
+            y_offset=(1080-result_height)//2
+            print(f"X_offset:{result_height}\nY_offset:{result_width}")
+            pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
