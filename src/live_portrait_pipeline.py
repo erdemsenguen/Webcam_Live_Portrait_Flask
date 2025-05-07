@@ -74,12 +74,12 @@ class LivePortraitPipeline(object):
 
 
         x_d_i_info = self.live_portrait_wrapper.get_kp_info(I_d_i)
-        R_d_i = get_rotation_matrix(x_d_i_info['pitch'], x_d_i_info['yaw'], x_d_i_info['roll'])
+        R_d_i = get_rotation_matrix(x_d_i_info['pitch']*0.1, x_d_i_info['yaw']*0.1, x_d_i_info['roll']*0.1)
 
         R_new = R_d_i @ R_s
-        delta_new = x_s_info['exp'] + (x_d_i_info['exp'] - x_s_info['exp'])
-        scale_new = x_s_info['scale'] * (x_d_i_info['scale'] / x_s_info['scale'])
-        t_new = x_s_info['t'] + (x_d_i_info['t'] - x_s_info['t'])
+        delta_new = x_s_info['exp'] + (x_d_i_info['exp'] - x_s_info['exp'])*0.9
+        scale_new = x_s_info['scale'] * (x_d_i_info['scale'] / x_s_info['scale'])**0.1
+        t_new = x_s_info['t'] + (x_d_i_info['t'] - x_s_info['t'])*0.4
         t_new[..., 2].fill_(0)  # zero tz
 
         x_d_i_new = scale_new * (x_s @ R_new + delta_new) + t_new
