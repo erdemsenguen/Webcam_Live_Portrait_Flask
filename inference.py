@@ -92,7 +92,7 @@ class Inference:
                             self.logger.debug("Face found.")
                             self.log_counter_face_start+=1
                             self.log_counter_face_not_found=0
-                    if (self.x_s and self.f_s and self.R_s and self.x_s_info and self.lip_delta_before_animation and self.crop_info and self.img_rgb):
+                    if self.source_image_path:
                         self.manipulation(cam=cam,frame=frame)
                     else:
                         self.log_counter_face_success=0
