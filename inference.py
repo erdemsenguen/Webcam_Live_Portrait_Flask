@@ -116,7 +116,7 @@ class Inference:
             result=cv2.resize(result,(int(result_width*1080/result_height),1080))
         x_offset=(1920-result_width)//2
         y_offset=(1080-result_height)//2
-        pad[y_offset:y_offset+result_height,x_offset+result_width]=result
+        pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
