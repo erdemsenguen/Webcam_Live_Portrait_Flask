@@ -11,6 +11,7 @@ import numpy as np
 import platform
 import pyvirtualcam
 import os
+import sys
 if platform.system() == "Windows":
     from pygrabber.dshow_graph import FilterGraph
 class Inference:
@@ -43,6 +44,7 @@ class Inference:
         self.log_counter_face_success=0
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
+        self.log_counter_face_not_found=0
         self.black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
@@ -83,12 +85,18 @@ class Inference:
                     if self.log_counter_face_start==0:
                             self.logger.debug("Face found.")
                             self.log_counter_face_start+=1
+                            self.log_counter_face_not_found=0
                     if (self.x_s and self.f_s and self.R_s and self.x_s_info and self.lip_delta_before_animation and self.crop_info and self.img_rgb):
                         self.manipulation(cam=cam,frame=frame)
                     else:
+                        self.log_counter_face_success=0
                         self.no_manipulation(cam=cam,frame=frame_fhd)
                 else:
                     self.no_manipulation(cam=cam,frame=frame_fhd)
+                    if self.log_counter_face_not_found==0:
+                        self.logger.debug("Face not found.")
+                        self.log_counter_face_not_found+=1
+                    self.log_counter_face_start=0
             cap.release()        
         # live_portrait_pipeline.execute_frame(result_bgr)
     def manipulation(self,cam,frame):
@@ -109,10 +117,7 @@ class Inference:
         cam.send(pad)
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
-        self.log_counter_face_success=0
-        self.log_counter_face_start=0
         if self.log_counter_cam_dupe==0:
-            self.logger.debug("Face not found, duplicating the cam input.")
             self.log_counter_cam_dupe+=1
         self.active=False
         self.source_image_path=None
@@ -155,4 +160,10 @@ class Inference:
     def stop(self):
         self.stop_signal=True
 if __name__ == '__main__':
-    pass
+    logging.basicConfig(
+    level=logging.DEBUG,  # or INFO
+    format='[%(asctime)s] %(levelname)s in %(name)s: %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+    )
+    inf=Inference()
+    inf.main()
