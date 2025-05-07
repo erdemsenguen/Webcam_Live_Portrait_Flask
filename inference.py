@@ -45,6 +45,13 @@ class Inference:
         self.log_counter_cam_dupe_success=0
         self.log_counter_face_not_found=0
         self.black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        self.x_s=None
+        self.f_s=None
+        self.R_s=None
+        self.x_s_info=None
+        self.lip_delta_before_animation=None
+        self.crop_info=None
+        self.img_rgb=None
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
