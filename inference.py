@@ -175,8 +175,7 @@ class Inference:
     def stop(self):
         self.stop_signal=True
     def test(self,video_path:str,conf_list:typing.List[typing.Dict],pic_path:str):
-        cap=cv2.VideoCapture(video_path)
-        ret, frame = cap.read()
+       
         base_pic = os.path.splitext(os.path.basename(pic_path))[0]
         filename =str(base_pic)+'.mp4'
         output_path = os.path.join("output_videos", filename)
@@ -185,32 +184,20 @@ class Inference:
         if img is None:
             raise ValueError(f"Failed to load image from {pic_path}")
         height, width = img.shape[:2]
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cv2.VideoCapture(video_path).get(cv2.CAP_PROP_FPS)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
         for conf in conf_list:
+            cap=cv2.VideoCapture(video_path)
+            ret, frame = cap.read()
             if not ret:
                 self.logger.debug("Reached end of video or failed to read frame.")
                 continue
             self.set_parameters(**conf)
             self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, pic_path)
-            result=self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame) 
-            result=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
             text_lines = [f"{key}: {value}" for key, value in conf.items()]
             y0, dy = 30, 30
-            for i, line in enumerate(text_lines):
-                y = y0 + i * dy
-                cv2.putText(
-                    result, line, (10, y),  # position
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,                    # font scale
-                    (0, 0, 0),        # white text
-                    2,                      # thickness
-                    cv2.LINE_AA             # anti-aliased
-                )
-            out.write(result)
             while True:
-                ret, frame = cap.read()
                 if not ret:
                     self.logger.debug("Reached end of video or failed to read frame.")
                     break
@@ -227,6 +214,7 @@ class Inference:
                         cv2.LINE_AA             # anti-aliased
                     )
                 out.write(result)
+                ret, frame = cap.read()
         cap.release()
         out.release()
 if __name__ == '__main__':
