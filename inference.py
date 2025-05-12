@@ -120,7 +120,7 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
-        if self.background_image is not None:
+        if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
         pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
@@ -134,7 +134,7 @@ class Inference:
         x_offset=(1920-result_width)//2
         y_offset=(1080-result_height)//2
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
-        if self.background_image is not None:
+        if isinstance(self.background_image, np.ndarray):
             segment=self.segmentor.process(pad)
             mask=segment.segmentation_mask>0.6
             mask_3ch=np.stack((mask,)*3,axis=-1)
