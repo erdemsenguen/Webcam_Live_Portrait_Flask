@@ -195,6 +195,7 @@ class Inference:
             self.set_parameters(**conf)
             self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, pic_path)
             result=self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame) 
+            result=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
             text_lines = [f"{key}: {value}" for key, value in conf.items()]
             y0, dy = 30, 30
             for i, line in enumerate(text_lines):
@@ -214,6 +215,7 @@ class Inference:
                     self.logger.debug("Reached end of video or failed to read frame.")
                     break
                 result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
+                result=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
                 for i, line in enumerate(text_lines):
                     y = y0 + i * dy
                     cv2.putText(
