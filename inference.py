@@ -134,6 +134,7 @@ class Inference:
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
+            bg_image_resize=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
             segment=self.segmentor.process(pad)
             mask=segment.segmentation_mask>0.8
             mask= mask.astype(np.float32)
@@ -185,7 +186,6 @@ class Inference:
                 self.background_image=None
             else:
                 self.background_image=cv2.imread(random.choice(self.background_images))
-                self.background_image=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
             return "Image set successfully."
         except Exception as e:
             self.source_image_path=None
