@@ -134,7 +134,7 @@ class Inference:
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
-            bg_image_resize=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
+            bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
             segment = self.segmentor.process(pad)
             raw_mask = segment.segmentation_mask 
             blurred_mask = cv2.GaussianBlur(raw_mask, (51, 51), 0) 
