@@ -136,11 +136,11 @@ class Inference:
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
             bg_image_resize=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
             segment=self.segmentor.process(pad)
-            mask=segment.segmentation_mask>0.8
-            mask= mask.astype(np.float32)
-            blurred_mask=cv2.GaussianBlur(mask,(35,35),0)
-            mask_3ch=np.stack((mask,)*3,axis=-1)
-            out = (mask_3ch * pad + (1 - mask_3ch) * bg_image_resize).astype(np.uint8)
+            mask=(segment.segmentation_mask>0.8).astype(np.uint8)*255
+            foreground=pad.copy()
+            foreground_masked=cv2.bitwise_and(foreground,foreground,mask=mask)
+            background_masked = cv2.bitwise_and(bg_image_resize, bg_image_resize, mask=cv2.bitwise_not(mask))
+            out = cv2.add(foreground_masked, background_masked)
             cam.send(out)
         else:
             cam.send(pad)
