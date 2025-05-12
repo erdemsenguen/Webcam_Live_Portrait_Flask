@@ -180,11 +180,12 @@ class Inference:
             ret, frame = cap.read()
             if not ret:
                 self.logger.debug("Reached end of video or failed to read frame.")
-                break
+                continue
             self.set_parameters(**conf)
             self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, pic_path)
             result=self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
-            filename =f'{pic_path}-{"-".join(f"{str(k).replace(".","_")}-{str(v).replace(".","_")}" for k, v in conf.items())}.mp4' 
+            base_pic = os.path.splitext(os.path.basename(pic_path))[0]
+            filename =str(base_pic)+"-"+"-".join(f"{str(k).replace('.','_')}-{str(v).replace('.','_')}" for k, v in conf.items())+'.mp4' 
             output_path = os.path.join("output_videos", filename)
             os.makedirs("output_videos", exist_ok=True)
             height, width = frame.shape[:2]
@@ -199,6 +200,8 @@ class Inference:
                     break
                 result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
                 out.write(result)
+            cap.release()
+            out.release()
 if __name__ == '__main__':
     logging.basicConfig(
     level=logging.DEBUG,  # or INFO
