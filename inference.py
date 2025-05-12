@@ -45,6 +45,7 @@ class Inference:
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
+        self.background_image=None
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
@@ -119,8 +120,8 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
-        bg_image = cv2.imread(random.choice(self.background_images))
-        bg_image_resize=cv2.resize(bg_image,(1920,1080))
+        if self.background_image:
+            bg_image_resize=cv2.resize(self.background_image,(1920,1080))
         pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
@@ -133,14 +134,18 @@ class Inference:
         x_offset=(1920-result_width)//2
         y_offset=(1080-result_height)//2
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
-        segment=self.segmentor.process(pad)
-        mask=segment.segmentation_mask>0.6
-        mask_3ch=np.stack((mask,)*3,axis=-1)
-        out=np.where(mask_3ch,pad,bg_image_resize)
+        if self.background_image:
+            segment=self.segmentor.process(pad)
+            mask=segment.segmentation_mask>0.6
+            mask_3ch=np.stack((mask,)*3,axis=-1)
+            out=np.where(mask_3ch,pad,bg_image_resize)
+            cam.send(out)
+        else:
+            cam.send(pad)
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
-        cam.send(out)
+        
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
         if self.log_counter_cam_dupe==0:
@@ -175,6 +180,10 @@ class Inference:
             load_image_rgb(source_img_path)
             self.source_image_path=source_img_path
             self.logger.debug("Image set successfully!")
+            if source_img_path.endswith("7.jpg"):
+                self.background_image=None
+            else:
+                self.background_image=cv2.imread(random.choice(self.background_images))
             return "Image set successfully."
         except Exception as e:
             self.source_image_path=None
