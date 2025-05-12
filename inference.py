@@ -41,7 +41,7 @@ class Inference:
         self.running=False
         self.active=False
         self.mp_selfie_segmentation=mp.solutions.selfie_segmentation
-        self.segmentor=self.mp_selfie_segmentation.SelfieSegmentation(model_selection=1)
+        self.segmentor=self.mp_selfie_segmentation.SelfieSegmentation(model_selection=0)
         # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
@@ -137,8 +137,10 @@ class Inference:
             bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
             segment = self.segmentor.process(pad)
             raw_mask = segment.segmentation_mask 
-            blurred_mask = cv2.GaussianBlur(raw_mask, (51, 51), 0) 
-            blurred_mask = np.clip(blurred_mask, 0.0, 1.0)
+            binary_mask = (raw_mask > 0.3).astype(np.uint8)
+            dilated = cv2.dilate(binary_mask, np.ones((15, 15), np.uint8), iterations=1)
+            expanded_mask = dilated.astype(np.float32)
+            blurred_mask = cv2.GaussianBlur(expanded_mask, (51, 51), 0)
             mask_3ch = np.repeat(blurred_mask[:, :, np.newaxis], 3, axis=2)
             out = (pad * mask_3ch + bg_image_resize * (1 - mask_3ch)).astype(np.uint8)
             cam.send(out)
