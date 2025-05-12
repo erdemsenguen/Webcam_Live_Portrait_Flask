@@ -135,11 +135,12 @@ class Inference:
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
             bg_image_resize=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
-            segment=self.segmentor.process(pad)
-            raw_mask=segment.segmentation_mask
-            soft_mask = cv2.GaussianBlur(segment, (51, 51), 0)
-            mask_3ch = np.repeat(soft_mask[:, :, np.newaxis], 3, axis=2)
-            out=(pad*mask_3ch+bg_image_resize*(1-mask_3ch)).astype(np.uint8)
+            segment = self.segmentor.process(pad)
+            raw_mask = segment.segmentation_mask 
+            blurred_mask = cv2.GaussianBlur(raw_mask, (51, 51), 0) 
+            blurred_mask = np.clip(blurred_mask, 0.0, 1.0)
+            mask_3ch = np.repeat(blurred_mask[:, :, np.newaxis], 3, axis=2)
+            out = (pad * mask_3ch + bg_image_resize * (1 - mask_3ch)).astype(np.uint8)
             cam.send(out)
         else:
             cam.send(pad)
