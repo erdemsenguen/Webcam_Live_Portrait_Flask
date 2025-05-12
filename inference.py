@@ -178,7 +178,7 @@ class Inference:
         cap=cv2.VideoCapture(video_path)
         ret, frame = cap.read()
         base_pic = os.path.splitext(os.path.basename(pic_path))[0]
-        filename =str(base_pic)+"-"+"-".join(f"{str(k).replace('.','_')}-{str(v).replace('.','_')}" for k, v in conf.items())+'.mp4'
+        filename =str(base_pic)+'.mp4'
         output_path = os.path.join("output_videos", filename)
         os.makedirs("output_videos", exist_ok=True)
         img = cv2.imread(pic_path)
