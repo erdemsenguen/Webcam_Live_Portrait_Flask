@@ -60,7 +60,7 @@ class APIServer:
         @self.app.route("/api/run", methods=["GET"])
         def handle_run_request():
             self.run_funct()
-            return jsonify({"status":"Running"}),200            
+            return jsonify({"status":"Running"}),200           
     def start(self):
         self._thread = threading.Thread(
             target=lambda: self.app.run(

@@ -31,6 +31,12 @@ class LivePortraitPipeline(object):
     def __init__(self, inference_cfg: InferenceConfig, crop_cfg: CropConfig):
         self.live_portrait_wrapper: LivePortraitWrapper = LivePortraitWrapper(cfg=inference_cfg)
         self.cropper = Cropper(crop_cfg=crop_cfg)
+        self.roll=0.1
+        self.pitch=0.1
+        self.yaw=0.1
+        self.expression=1
+        self.scale=0.1
+        self.t=0.1
 
     def execute_frame(self, frame, source_image_path):
         inference_cfg = self.live_portrait_wrapper.cfg  # for convenience
@@ -74,12 +80,11 @@ class LivePortraitPipeline(object):
 
 
         x_d_i_info = self.live_portrait_wrapper.get_kp_info(I_d_i)
-        R_d_i = get_rotation_matrix(x_d_i_info['pitch']*0.2, x_d_i_info['yaw']*0.2, x_d_i_info['roll']*0.2)
-
+        R_d_i = get_rotation_matrix(x_d_i_info['pitch']*self.pitch, x_d_i_info['yaw']*self.yaw, x_d_i_info['roll']*self.roll)
         R_new = R_d_i @ R_s
-        delta_new = x_s_info['exp'] + (x_d_i_info['exp'] - x_s_info['exp'])*1.1
-        scale_new = x_s_info['scale'] * (x_d_i_info['scale'] / x_s_info['scale'])**0.1
-        t_new = x_s_info['t'] + (x_d_i_info['t'] - x_s_info['t'])*0.1
+        delta_new = x_s_info['exp'] + (x_d_i_info['exp'] - x_s_info['exp'])*self.expression
+        scale_new = x_s_info['scale'] * (x_d_i_info['scale'] / x_s_info['scale'])**self.scale
+        t_new = x_s_info['t'] + (x_d_i_info['t'] - x_s_info['t'])*self.t
         t_new[..., 2].fill_(0)  # zero tz
 
         x_d_i_new = scale_new * (x_s @ R_new + delta_new) + t_new
@@ -95,4 +100,7 @@ class LivePortraitPipeline(object):
             return I_p_i_to_ori_blend
         else:
             return I_p_i
-
+    def update_values(self,kwargs:dict):
+        for key,value in kwargs.items():
+            if hasattr(self,key):
+                setattr(self,key,value)

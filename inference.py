@@ -12,6 +12,7 @@ import platform
 import pyvirtualcam
 import os
 import sys
+import typing
 if platform.system() == "Windows":
     from pygrabber.dshow_graph import FilterGraph
 class Inference:
@@ -79,6 +80,7 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
+                frame=cv2.flip(frame, 1)
                 frame_fhd= cv2.resize(frame,(1920,1080))
                 frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_fhd)
@@ -164,12 +166,39 @@ class Inference:
         except Exception as e:
             self.source_image_path=None
             return e
+    def set_parameters(self,**kwargs):
+        self.live_portrait_pipeline.update_values(kwargs)
     def status_funct(self):
         return(self.active)
     def set_run(self):
         self.running=True
     def stop(self):
         self.stop_signal=True
+    def test(self,video_path:str,conf_list:typing.List[typing.Dict],pic_path:str):
+        for conf in conf_list:
+            cap=cv2.VideoCapture(video_path)
+            ret, frame = cap.read()
+            if not ret:
+                self.logger.debug("Reached end of video or failed to read frame.")
+                break
+            self.set_parameters(**conf)
+            self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, pic_path)
+            result=self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
+            filename =f'{pic_path}-{"-".join(f"{str(k).replace(".","_")}-{str(v).replace(".","_")}" for k, v in conf.items())}.mp4' 
+            output_path = os.path.join("output_videos", filename)
+            os.makedirs("output_videos", exist_ok=True)
+            height, width = frame.shape[:2]
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+            out.write(result)
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    self.logger.debug("Reached end of video or failed to read frame.")
+                    break
+                result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
+                out.write(result)
 if __name__ == '__main__':
     logging.basicConfig(
     level=logging.DEBUG,  # or INFO
