@@ -136,7 +136,7 @@ class Inference:
         segment=self.segmentor.process(pad)
         mask=segment.segmentation_mask>0.6
         mask_3ch=np.stack((mask,)*3,axis=-1)
-        out=np.where(mask_3ch,result,bg_image_resize)
+        out=np.where(mask_3ch,pad,bg_image_resize)
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
