@@ -19,7 +19,7 @@ class InferenceConfig(PrintableConfig):
     checkpoint_W: str = make_abs_path('../../pretrained_weights/liveportrait/base_models/warping_module.pth')  # path to checkpoint
 
     checkpoint_S: str = make_abs_path('../../pretrained_weights/liveportrait/retargeting_models/stitching_retargeting_module.pth')  # path to checkpoint
-    flag_use_half_precision: bool = True  # whether to use half precision
+    flag_use_half_precision: bool = False  # whether to use half precision
 
     flag_lip_zero: bool = True  # whether let the lip to close state before animation, only take effect when flag_eye_retargeting and flag_lip_retargeting is False
     lip_zero_threshold: float = 0.03
@@ -37,7 +37,7 @@ class InferenceConfig(PrintableConfig):
     crf: int = 15  # crf for output video
 
     flag_write_result: bool = True  # whether to write output video
-    flag_pasteback: bool = True  # whether to paste-back/stitch the animated face cropping from the face-cropping space to the original image space
+    flag_pasteback: bool = False  # whether to paste-back/stitch the animated face cropping from the face-cropping space to the original image space
     mask_crop = None
     flag_write_gif: bool = False
     size_gif: int = 256
