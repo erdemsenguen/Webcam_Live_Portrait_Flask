@@ -6,13 +6,14 @@ import html
 import logging
 
 class APIServer:
-    def __init__(self,set_source_funct:callable,stop_funct:callable,status_funct:callable,run_funct:callable, host="127.0.0.1", port=5001, source_img_dir:str=None,):
+    def __init__(self,set_source_funct:callable,stop_funct:callable,status_funct:callable,run_funct:callable, set_param:callable,host="127.0.0.1", port=5001, source_img_dir:str=None,):
         self.host = host
         self.port = port
         self.app = Flask(__name__)
         CORS(self.app)
         self._register_routes()
         self._thread=None
+        self.set_param=set_param
         self.source_img_dir=source_img_dir
         self.extensions = ('.jpg')
         self.set_source_funct=set_source_funct
@@ -44,7 +45,17 @@ class APIServer:
                         inp=str(j_input)
                         if inp in self.file_names:
                             try:
+                                if int(j_input)==7:
+                                    self.set_param({"pitch":0,
+                                        "yaw":0,
+                                        "roll":0,
+                                        "expression":1,
+                                        "scale":0,
+                                        "t":1})
+                                else:
+                                    self.set_param({"roll":0.2,"yaw":0.2,"pitch":0.2,"expression":1.05,"scale":1.1,"t":1})
                                 self.set_source_funct(f"{self.source_img_dir}/{j_input}.jpg")
+                                
                                 return jsonify({"status": "success", "input": j_input}), 200
                             except Exception as e:
                                 print(e)

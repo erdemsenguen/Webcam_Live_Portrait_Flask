@@ -14,6 +14,7 @@ import pyvirtualcam
 import os
 import sys
 import typing
+import random
 if platform.system() == "Windows":
     from pygrabber.dshow_graph import FilterGraph
 class Inference:
@@ -34,6 +35,9 @@ class Inference:
         )
         # Get the directory of the current script
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.background_images=[f"{os.path.dirname(self.script_dir)}/Backgrounds/wall.jpg",
+                                f"{os.path.dirname(self.script_dir)}/Backgrounds/bookshelf.jpg",
+                                f"{os.path.dirname(self.script_dir)}/Backgrounds/inIT_Hindergrund.jpg"]
         self.running=False
         self.active=False
         self.mp_selfie_segmentation=mp.solutions.selfie_segmentation
@@ -115,7 +119,7 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
-        bg_image = cv2.imread(self.background_images)
+        bg_image = cv2.imread(random.choice(self.background_images))
         bg_image_resize=cv2.resize(bg_image,(1920,1080))
         pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
@@ -132,11 +136,11 @@ class Inference:
         segment=self.segmentor.process(pad)
         mask=segment.segmentation_mask>0.6
         mask_3ch=np.stack((mask,)*3,axis=-1)
-        out=np.where(mask_3ch,frame,bg_image_resized)
+        out=np.where(mask_3ch,result,bg_image_resize)
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
-        cam.send(pad)
+        cam.send(out)
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
         if self.log_counter_cam_dupe==0:
