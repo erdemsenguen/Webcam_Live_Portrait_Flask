@@ -215,15 +215,15 @@ class Inference:
                     break
                 result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
                 for i, line in enumerate(text_lines):
-                y = y0 + i * dy
-                cv2.putText(
-                    result, line, (10, y),  # position
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,                    # font scale
-                    (0, 0, 0),        # white text
-                    2,                      # thickness
-                    cv2.LINE_AA             # anti-aliased
-                )
+                    y = y0 + i * dy
+                    cv2.putText(
+                        result, line, (10, y),  # position
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,                    # font scale
+                        (0, 0, 0),        # white text
+                        2,                      # thickness
+                        cv2.LINE_AA             # anti-aliased
+                    )
                 out.write(result)
         cap.release()
         out.release()
