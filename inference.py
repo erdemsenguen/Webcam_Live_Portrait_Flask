@@ -185,6 +185,7 @@ class Inference:
                 self.background_image=None
             else:
                 self.background_image=cv2.imread(random.choice(self.background_images))
+                self.background_image=cv2.colorChange(self.background_image,cv2.COLOR_BGR2RGB)
             return "Image set successfully."
         except Exception as e:
             self.source_image_path=None
