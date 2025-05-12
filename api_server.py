@@ -49,11 +49,11 @@ class APIServer:
                                     self.set_param(**{"pitch":1,
                                         "yaw":1,
                                         "roll":1,
-                                        "expression":1,
+                                        "expression":1.05,
                                         "scale":1.1,
                                         "t":1})
                                 else:
-                                    self.set_param(**{"roll":0.4,"yaw":0.4,"pitch":0.4,"expression":1.05,"scale":1.1,"t":1})
+                                    self.set_param(**{"roll":0.7,"yaw":0.7,"pitch":0.7,"expression":1.05,"scale":1.1,"t":1})
                                 self.set_source_funct(f"{self.source_img_dir}/{j_input}.jpg")
                                 
                                 return jsonify({"status": "success", "input": j_input}), 200
