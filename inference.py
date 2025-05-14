@@ -90,7 +90,7 @@ class Inference:
                 if not ret:
                     break
                 frame=cv2.flip(frame, 1)
-                frame_clr = cv2.cvtColor(frame_clr, cv2.COLOR_BGR2RGB)
+                frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_clr)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
@@ -153,6 +153,9 @@ class Inference:
         
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
+        if frame.shape[1] != 1920 or frame.shape[0] != 1080:
+            frame = cv2.resize(frame, (1920, 1080))
+
         if self.log_counter_cam_dupe==0:
             self.log_counter_cam_dupe+=1
         self.active=False
