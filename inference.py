@@ -43,13 +43,11 @@ class Inference:
                             f"{os.path.dirname(self.script_dir)}/Backgrounds/meeting_green2.jpg"]
         self.running=False
         self.active=False
-        self.mp_selfie_segmentation=mp.solutions.selfie_segmentation
-        self.segmentor=self.mp_selfie_segmentation.SelfieSegmentation(model_selection=1)
-        # Build the full path to the target file (e.g., a PNG inside a subfolder)
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
         self.background_image=None
         self.green_screen=None
+        self.previous_green_screen=None
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
@@ -159,68 +157,70 @@ class Inference:
             self.log_counter_face_success+=1
     def overlay_on_monitor(self,background_img, overlay_img):
         # Convert to HSV to detect green more robustly
-        hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
-        
-        # Define green color range
-        lower_green = np.array([50, 100, 100])
-        upper_green = np.array([95, 255, 255])
-        
-        # Create mask and find contours
-        mask = cv2.inRange(hsv, lower_green, upper_green)
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            print("No green screen found.")
-            return background_img
-        
-        # Assume largest green area is the monitor
-        largest_contour = max(contours, key=cv2.contourArea)
-        # Get bounding box or polygon approximation
-        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
-        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+        if self.previous_green_screen==None or (self.previous_green_screen != self.green_screen):
+            hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
+            
+            # Define green color range
+            lower_green = np.array([50, 100, 100])
+            upper_green = np.array([95, 255, 255])
+            
+            # Create mask and find contours
+            mask = cv2.inRange(hsv, lower_green, upper_green)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not contours:
+                print("No green screen found.")
+                return background_img
+            
+            # Assume largest green area is the monitor
+            largest_contour = max(contours, key=cv2.contourArea)
+            # Get bounding box or polygon approximation
+            epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+            approx = cv2.approxPolyDP(largest_contour, epsilon, True)
 
-        if len(approx) != 4:
-            print("Monitor contour not detected as a quadrilateral.")
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            dst_pts = np.array([
-                    [x, y],
-                    [x + w, y],
-                    [x + w, y + h],
-                    [x, y + h]
-                ], dtype="float32")
-        else:
-            dst_pts = np.array([point[0] for point in approx], dtype="float32")
+            if len(approx) != 4:
+                print("Monitor contour not detected as a quadrilateral.")
+                x, y, w, h = cv2.boundingRect(largest_contour)
+                dst_pts = np.array([
+                        [x, y],
+                        [x + w, y],
+                        [x + w, y + h],
+                        [x, y + h]
+                    ], dtype="float32")
+            else:
+                dst_pts = np.array([point[0] for point in approx], dtype="float32")
 
 
-        # Sort corners: top-left, top-right, bottom-right, bottom-left
-        def order_points(pts):
-            rect = np.zeros((4, 2), dtype="float32")
-            s = pts.sum(axis=1)
-            diff = np.diff(pts, axis=1)
-            rect[0] = pts[np.argmin(s)]
-            rect[2] = pts[np.argmax(s)]
-            rect[1] = pts[np.argmin(diff)]
-            rect[3] = pts[np.argmax(diff)]
-            return rect
-        def expand_quad(pts, expand_px):
-            cx, cy = np.mean(pts, axis=0)
-            expanded = []
-            for x, y in pts:
-                direction = np.array([x - cx, y - cy], dtype=np.float32)
-                norm = np.linalg.norm(direction)
-                if norm != 0:
-                    unit = direction / norm
-                    new_pt = np.array([x, y]) + unit * expand_px
-                else:
-                    new_pt = np.array([x, y])
-                expanded.append(new_pt)
-            return np.array(expanded, dtype="float32")
+            # Sort corners: top-left, top-right, bottom-right, bottom-left
+            def order_points(pts):
+                rect = np.zeros((4, 2), dtype="float32")
+                s = pts.sum(axis=1)
+                diff = np.diff(pts, axis=1)
+                rect[0] = pts[np.argmin(s)]
+                rect[2] = pts[np.argmax(s)]
+                rect[1] = pts[np.argmin(diff)]
+                rect[3] = pts[np.argmax(diff)]
+                return rect
+            def expand_quad(pts, expand_px):
+                cx, cy = np.mean(pts, axis=0)
+                expanded = []
+                for x, y in pts:
+                    direction = np.array([x - cx, y - cy], dtype=np.float32)
+                    norm = np.linalg.norm(direction)
+                    if norm != 0:
+                        unit = direction / norm
+                        new_pt = np.array([x, y]) + unit * expand_px
+                    else:
+                        new_pt = np.array([x, y])
+                    expanded.append(new_pt)
+                return np.array(expanded, dtype="float32")
 
-        dst_pts = order_points(dst_pts)
-        dst_pts = expand_quad(dst_pts,2)
+            dst_pts = order_points(dst_pts)
+            self.dst_pts = expand_quad(dst_pts,2)
+            self.previous_green_screen=self.green_screen
         h, w = overlay_img.shape[:2]
         src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
-        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        M = cv2.getPerspectiveTransform(src_pts, self.dst_pts)
         warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
 
         # Mask out green screen
