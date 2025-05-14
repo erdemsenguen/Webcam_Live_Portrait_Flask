@@ -148,7 +148,7 @@ class Inference:
                 green_img=cv2.imread(self.green_screen)
                 green_img=cv2.resize(green_img,(1280,720))
                 green_img=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                out=self.overlay_on_monitor(green_img)
+                out=self.overlay_on_monitor(green_img,out)
             cam.send(out)
         else:
             cam.send(pad)
