@@ -15,6 +15,7 @@ import os
 import sys
 import typing
 import random
+import onnxruntime as ort
 if platform.system() == "Windows":
     from pygrabber.dshow_graph import FilterGraph
 class Inference:
@@ -63,6 +64,7 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
+        self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2net.onnx")
         self.pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
@@ -139,16 +141,7 @@ class Inference:
         if self.background_image:
             background=cv2.imread(self.background_image)
             bg_image_resize=cv2.resize(background,(1920,1080))
-            bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
-            small = cv2.resize(pad, (960, 540))
-            raw_mask = self.segmentor.process(small).segmentation_mask
-            raw_mask = cv2.resize(raw_mask, (1920, 1080))
-            binary_mask = (raw_mask > 0.5).astype(np.uint8)
-            dilated = cv2.dilate(binary_mask, np.ones((15, 15), np.uint8), iterations=1)
-            expanded_mask = dilated.astype(np.float32)
-            blurred_mask = cv2.GaussianBlur(expanded_mask, (51, 51), 0)
-            mask_3ch = np.repeat(blurred_mask[:, :, np.newaxis], 3, axis=2)
-            out = (pad * mask_3ch + bg_image_resize * (1 - mask_3ch)).astype(np.uint8)
+            out=self.background_blur(frame,bg_image_resize)
             if self.green_screen:
                 green_img=cv2.imread(self.green_screen)
                 green_img=cv2.resize(green_img,(1920,1080))
@@ -245,6 +238,26 @@ class Inference:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
         cam.send(blended)
+    def background_blur(self,frame,background_img):
+            input_blob=self.preprocess(frame)
+            result=self.session.run(None,{"input":input_blob})
+            mask=self.postprocess(result,frame.shape[:2])
+            fg=frame.astype(np.float32)/255.0
+            bg=background_img.astype(np.float32)/255.0
+            composite = fg * mask + bg * (1 - mask)
+            composite = (composite * 255).astype(np.uint8) 
+            return cv2.resize(composite,(1920,1080))
+    def preprocess(self,frame):
+        img = cv2.resize(frame, (320, 320)).astype(np.float32) / 255.0
+        img = img.transpose(2, 0, 1)[np.newaxis, :]
+        return img.astype(np.float32)
+    
+    def postprocess(self, pred, shape):
+            pred = pred.squeeze()
+            pred = cv2.resize(pred, shape[::-1])
+            pred = np.clip(pred, 0, 1)
+            return pred[:, :, np.newaxis]
+
     def conf_virt_live_webcam(self):
         if platform.system() == "Windows":
             self.backend = "obs"
