@@ -161,8 +161,8 @@ class Inference:
         hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
         
         # Define green color range
-        lower_green = np.array([50, 100, 100])
-        upper_green = np.array([90, 255, 255])
+        lower_green = np.array([35, 40, 40])
+        upper_green = np.array([85, 255, 255])
         
         # Create mask and find contours
         mask = cv2.inRange(hsv, lower_green, upper_green)
@@ -181,10 +181,16 @@ class Inference:
 
         if len(approx) != 4:
             print("Monitor contour not detected as a quadrilateral.")
-            return background_img
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            dst_pts = np.array([
+                    [x, y],
+                    [x + w, y],
+                    [x + w, y + h],
+                    [x, y + h]
+                ], dtype="float32")
+        else:
+            dst_pts = np.array([point[0] for point in approx], dtype="float32")
 
-        # Destination coordinates for overlay image
-        dst_pts = np.array([point[0] for point in approx], dtype="float32")
 
         # Sort corners: top-left, top-right, bottom-right, bottom-left
         def order_points(pts):
