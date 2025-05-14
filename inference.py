@@ -38,6 +38,8 @@ class Inference:
         self.background_images=[f"{os.path.dirname(self.script_dir)}/Backgrounds/wall.jpg",
                                 f"{os.path.dirname(self.script_dir)}/Backgrounds/bookshelf.jpg",
                                 f"{os.path.dirname(self.script_dir)}/Backgrounds/inIT_Hindergrund.jpg"]
+        self.green_screens=[f"{os.path.dirname(self.script_dir)}/Backgrounds/meeting_green1.jpg",
+                            f"{os.path.dirname(self.script_dir)}/meeting_green1.jpg"]
         self.running=False
         self.active=False
         self.mp_selfie_segmentation=mp.solutions.selfie_segmentation
@@ -46,6 +48,7 @@ class Inference:
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
         self.background_image=None
+        self.green_screen=None
         # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
@@ -133,8 +136,9 @@ class Inference:
         y_offset=1080-result_height
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
-        if isinstance(self.background_image, np.ndarray):
-            bg_image_resize=cv2.resize(self.background_image,(1920,1080))
+        if self.background_image:
+            background=cv2.imread(self.background_image)
+            bg_image_resize=cv2.resize(background,(1920,1080))
             bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
             small = cv2.resize(pad, (960, 540))
             raw_mask = self.segmentor.process(small).segmentation_mask
@@ -145,13 +149,85 @@ class Inference:
             blurred_mask = cv2.GaussianBlur(expanded_mask, (51, 51), 0)
             mask_3ch = np.repeat(blurred_mask[:, :, np.newaxis], 3, axis=2)
             out = (pad * mask_3ch + bg_image_resize * (1 - mask_3ch)).astype(np.uint8)
+            if self.green_screen:
+                green_img=cv2.imread(self.green_screen)
+                green_img=cv2.resize(green_img,(1920,1080))
+                out=self.overlay_on_monitor(green_img)
             cam.send(out)
         else:
             cam.send(pad)
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
+    def overlay_on_monitor(background_img, overlay_img):
+        """
+        Replaces green screen on monitor in `background_img` with `overlay_img`.
         
+        :param background_img: np.ndarray, background image with green screen.
+        :param overlay_img: np.ndarray, output image to show on monitor.
+        :return: np.ndarray, composited image.
+        """
+        # Convert to HSV to detect green more robustly
+        hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
+        
+        # Define green color range
+        lower_green = np.array([50, 100, 100])
+        upper_green = np.array([90, 255, 255])
+        
+        # Create mask and find contours
+        mask = cv2.inRange(hsv, lower_green, upper_green)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if not contours:
+            print("No green screen found.")
+            return background_img
+        
+        # Assume largest green area is the monitor
+        largest_contour = max(contours, key=cv2.contourArea)
+        
+        # Get bounding box or polygon approximation
+        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+
+        if len(approx) != 4:
+            print("Monitor contour not detected as a quadrilateral.")
+            return background_img
+
+        # Destination coordinates for overlay image
+        dst_pts = np.array([point[0] for point in approx], dtype="float32")
+
+        # Sort corners: top-left, top-right, bottom-right, bottom-left
+        def order_points(pts):
+            rect = np.zeros((4, 2), dtype="float32")
+            s = pts.sum(axis=1)
+            diff = np.diff(pts, axis=1)
+            rect[0] = pts[np.argmin(s)]
+            rect[2] = pts[np.argmax(s)]
+            rect[1] = pts[np.argmin(diff)]
+            rect[3] = pts[np.argmax(diff)]
+            return rect
+
+        dst_pts = order_points(dst_pts)
+
+        # Source coordinates (corners of overlay_img)
+        h, w = overlay_img.shape[:2]
+        src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
+
+        # Compute perspective transform and warp overlay
+        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
+
+        # Mask out green screen
+        mask_warp = cv2.warpPerspective(np.ones_like(overlay_img, dtype=np.uint8)*255, M, (background_img.shape[1], background_img.shape[0]))
+        mask_gray = cv2.cvtColor(mask_warp, cv2.COLOR_BGR2GRAY)
+        mask_inv = cv2.bitwise_not(mask_gray)
+
+        bg_masked = cv2.bitwise_and(background_img, background_img, mask=mask_inv)
+        fg_masked = cv2.bitwise_and(warped_overlay, warped_overlay, mask=mask_gray)
+
+        # Combine background and foreground
+        combined = cv2.add(bg_masked, fg_masked)
+        return combined
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
         if frame.shape[1] != 1920 or frame.shape[0] != 1080:
@@ -185,18 +261,25 @@ class Inference:
             self.backend = "unknown"
     def set_source(self,source_img_path:str):
         self.first_iter=True
-        try:
-            load_image_rgb(source_img_path)
-            self.source_image_path=source_img_path
-            self.logger.debug("Image set successfully!")
+        if source_img_path==self.source_image_path:
             if source_img_path.endswith("7.jpg") or source_img_path.endswith("11.jpg"):
-                self.background_image=None
+                pass
             else:
-                self.background_image=cv2.imread(random.choice(self.background_images))
-            return "Image set successfully."
-        except Exception as e:
-            self.source_image_path=None
-            return e
+                self.green_screen=random.choice(self.green_screens)
+        else:
+            self.green_screen=None
+            try:
+                load_image_rgb(source_img_path)
+                self.source_image_path=source_img_path
+                self.logger.debug("Image set successfully!")
+                if source_img_path.endswith("7.jpg") or source_img_path.endswith("11.jpg"):
+                    self.background_image=None
+                else:
+                    self.background_image=random.choice(self.background_images)
+                return "Image set successfully."
+            except Exception as e:
+                self.source_image_path=None
+                return e
     def set_parameters(self,**kwargs):
         self.live_portrait_pipeline.update_values(kwargs)
     def status_funct(self):
