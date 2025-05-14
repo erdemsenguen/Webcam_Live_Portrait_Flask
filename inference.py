@@ -160,13 +160,6 @@ class Inference:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
     def overlay_on_monitor(background_img, overlay_img):
-        """
-        Replaces green screen on monitor in `background_img` with `overlay_img`.
-        
-        :param background_img: np.ndarray, background image with green screen.
-        :param overlay_img: np.ndarray, output image to show on monitor.
-        :return: np.ndarray, composited image.
-        """
         # Convert to HSV to detect green more robustly
         hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
         
