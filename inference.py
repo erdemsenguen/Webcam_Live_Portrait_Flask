@@ -223,7 +223,7 @@ class Inference:
 
         # Combine background and foreground
         combined = cv2.add(bg_masked, fg_masked)
-        combined = cv2.resize(combined(1280,720))
+        combined = cv2.resize(combined,(1280,720))
         return combined
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
