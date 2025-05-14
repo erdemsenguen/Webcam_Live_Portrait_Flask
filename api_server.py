@@ -4,6 +4,7 @@ from flask_cors import CORS
 import os
 import html
 import logging
+import json
 
 class APIServer:
     def __init__(self,set_source_funct:callable,stop_funct:callable,status_funct:callable,run_funct:callable, set_param:callable,host="127.0.0.1", port=5001, source_img_dir:str=None,):
@@ -45,7 +46,7 @@ class APIServer:
                         inp=str(j_input)
                         if inp in self.file_names:
                             try:
-                                if int(j_input)==7:
+                                if int(j_input)==7 or int(j_input)==11:
                                     self.set_param(**{"pitch":1,
                                         "yaw":1,
                                         "roll":1,
@@ -55,7 +56,7 @@ class APIServer:
                                 else:
                                     self.set_param(**{"roll":0.7,"yaw":0.7,"pitch":0.7,"expression":1.05,"scale":1.1,"t":1})
                                 self.set_source_funct(f"{self.source_img_dir}/{j_input}.jpg")
-                                
+                                self.handle_increment(int(j_input))
                                 return jsonify({"status": "success", "input": j_input}), 200
                             except Exception as e:
                                 print(e)
@@ -71,7 +72,33 @@ class APIServer:
         @self.app.route("/api/run", methods=["GET"])
         def handle_run_request():
             self.run_funct()
-            return jsonify({"status":"Running"}),200           
+            return jsonify({"status":"Running"}),200
+    def handle_increment(self,photo_id:int):
+            data_file = "data.json"
+            if not os.path.exists(data_file):
+                with open(data_file, "w") as f:
+                    json.dump({"1":["Angela Merkel",0],
+                               "2":["Olaf Scholz",0],
+                               "3":["Chris Hemsworth",0],
+                               "4":["Heidi Klum",0],
+                               "5":["Scarlet Johannson",0],
+                               "6":["Cristoph Waltz",0],
+                               "7":["Mona Lisa",0],
+                               "8":["Matthias Schweighöfer",0],
+                               "9":["Jenna Ortega",0],
+                               "10":["Henry Cavill",0],
+                               "11":["Albrecht Dürer",0]}, f)   
+
+            else:
+                with open(data_file, "r") as f:
+                    data = json.load(f)
+
+                photo_id_str = str(photo_id)
+                if photo_id_str in data:
+                    data[photo_id_str][1] += 1  # Increment the count
+
+                with open(data_file, "w") as f:
+                    json.dump(data, f, indent=2)
     def start(self):
         self._thread = threading.Thread(
             target=lambda: self.app.run(

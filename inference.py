@@ -130,7 +130,7 @@ class Inference:
             result=cv2.resize(result,(1920,int(result_height*1920/result_width)))
         result_height,result_width=result.shape[:2]
         x_offset=(1920-result_width)//2
-        y_offset=(1080-result_height)//2
+        y_offset=0
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
@@ -177,14 +177,14 @@ class Inference:
         elif platform.system() == "Linux":
             self.backend = "v4l2loopback"
         else:
-            self.backend = "unknown"  # or raise an error
+            self.backend = "unknown"
     def set_source(self,source_img_path:str):
         self.first_iter=True
         try:
             load_image_rgb(source_img_path)
             self.source_image_path=source_img_path
             self.logger.debug("Image set successfully!")
-            if source_img_path.endswith("7.jpg"):
+            if source_img_path.endswith("7.jpg") or source_img_path.endswith("11.jpg"):
                 self.background_image=None
             else:
                 self.background_image=cv2.imread(random.choice(self.background_images))
@@ -234,7 +234,7 @@ class Inference:
                         result, line, (10, y),  # position
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.8,                    # font scale
-                        (0, 0, 0),        # white text
+                        (0, 0, 0),        # black text
                         2,                      # thickness
                         cv2.LINE_AA             # anti-aliased
                     )
