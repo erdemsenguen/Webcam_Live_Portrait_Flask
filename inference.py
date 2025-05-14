@@ -215,7 +215,7 @@ class Inference:
             return np.array(expanded, dtype="float32")
 
         dst_pts = order_points(dst_pts)
-        dst_pts = expand_quad(dst_pts,10)
+        dst_pts = expand_quad(dst_pts,2)
         h, w = overlay_img.shape[:2]
         src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
