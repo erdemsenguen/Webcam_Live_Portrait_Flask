@@ -67,7 +67,7 @@ class Inference:
 
     def main(self):
         with pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=960, height=540, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+             pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
             black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
             while True:
                 if not self.running:
@@ -91,7 +91,7 @@ class Inference:
                     break
                 frame=cv2.flip(frame, 1)
                 frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_fhd = cv2.resize(frame_clr,(920,560))
+                frame_fhd = cv2.resize(frame_clr,(1920,1080))
                 cam2.send(frame_fhd)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
