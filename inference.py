@@ -39,7 +39,7 @@ class Inference:
                                 f"{os.path.dirname(self.script_dir)}/Backgrounds/bookshelf.jpg",
                                 f"{os.path.dirname(self.script_dir)}/Backgrounds/inIT_Hindergrund.jpg"]
         self.green_screens=[f"{os.path.dirname(self.script_dir)}/Backgrounds/meeting_green1.jpg",
-                            f"{os.path.dirname(self.script_dir)}/meeting_green1.jpg"]
+                            f"{os.path.dirname(self.script_dir)}/Backgrounds/meeting_green2.jpg"]
         self.running=False
         self.active=False
         self.mp_selfie_segmentation=mp.solutions.selfie_segmentation
