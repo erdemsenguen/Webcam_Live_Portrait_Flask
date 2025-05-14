@@ -167,15 +167,13 @@ class Inference:
         # Create mask and find contours
         mask = cv2.inRange(hsv, lower_green, upper_green)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
-        mask = cv2.dilate(mask, kernel, iterations=1)
         if not contours:
             print("No green screen found.")
             return background_img
         
         # Assume largest green area is the monitor
         largest_contour = max(contours, key=cv2.contourArea)
-        
+        largest_contour = expand_contour(largest_contour,10)
         # Get bounding box or polygon approximation
         epsilon = 0.02 * cv2.arcLength(largest_contour, True)
         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
@@ -203,14 +201,33 @@ class Inference:
             rect[1] = pts[np.argmin(diff)]
             rect[3] = pts[np.argmax(diff)]
             return rect
+        def expand_contour(contour, expansion_px):
+            M = cv2.moments(contour)
+            if M["m00"] == 0:
+                return contour  # Avoid divide-by-zero error
 
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+
+            expanded = []
+            for pt in contour:
+                x, y = pt[0]
+                direction = np.array([x - cx, y - cy], dtype=np.float32)
+                norm = np.linalg.norm(direction)
+                if norm != 0:
+                    unit = direction / norm
+                    new_pt = np.array([x, y], dtype=np.float32) + unit * expansion_px
+                else:
+                    new_pt = np.array([x, y], dtype=np.float32)
+                expanded.append(new_pt)
+
+            expanded = np.array(expanded, dtype=np.int32).reshape(-1, 1, 2)
+            return expanded
         dst_pts = order_points(dst_pts)
 
-        # Source coordinates (corners of overlay_img)
         h, w = overlay_img.shape[:2]
         src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
-        # Compute perspective transform and warp overlay
         M = cv2.getPerspectiveTransform(src_pts, dst_pts)
         warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
 
