@@ -173,7 +173,6 @@ class Inference:
         
         # Assume largest green area is the monitor
         largest_contour = max(contours, key=cv2.contourArea)
-        largest_contour = expand_contour(largest_contour,10)
         # Get bounding box or polygon approximation
         epsilon = 0.02 * cv2.arcLength(largest_contour, True)
         approx = cv2.approxPolyDP(largest_contour, epsilon, True)
@@ -201,30 +200,22 @@ class Inference:
             rect[1] = pts[np.argmin(diff)]
             rect[3] = pts[np.argmax(diff)]
             return rect
-        def expand_contour(contour, expansion_px):
-            M = cv2.moments(contour)
-            if M["m00"] == 0:
-                return contour  # Avoid divide-by-zero error
-
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-
+        def expand_quad(pts, expand_px):
+            cx, cy = np.mean(pts, axis=0)
             expanded = []
-            for pt in contour:
-                x, y = pt[0]
+            for x, y in pts:
                 direction = np.array([x - cx, y - cy], dtype=np.float32)
                 norm = np.linalg.norm(direction)
                 if norm != 0:
                     unit = direction / norm
-                    new_pt = np.array([x, y], dtype=np.float32) + unit * expansion_px
+                    new_pt = np.array([x, y]) + unit * expand_px
                 else:
-                    new_pt = np.array([x, y], dtype=np.float32)
+                    new_pt = np.array([x, y])
                 expanded.append(new_pt)
+            return np.array(expanded, dtype="float32")
 
-            expanded = np.array(expanded, dtype=np.int32).reshape(-1, 1, 2)
-            return expanded
         dst_pts = order_points(dst_pts)
-
+        dst_ptx = expand_quad(dst_pts,10)
         h, w = overlay_img.shape[:2]
         src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
