@@ -243,7 +243,7 @@ class Inference:
         cam.send(blended)
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
-            result=self.session.run(None,{"input":input_blob})[0]
+            result=self.session.run(None,{"input.1":input_blob})[0]
             mask=self.postprocess(result,frame.shape[:2])
             fg=frame.astype(np.float32)/255.0
             bg=background_img.astype(np.float32)/255.0
