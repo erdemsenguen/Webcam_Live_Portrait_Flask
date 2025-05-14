@@ -64,16 +64,16 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2net.onnx")
-        self.pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
+        self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx")
+        self.pad=np.zeros((720, 1280, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-        with pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=1920, height=1080, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
-            black_image = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        with pyvirtualcam.Camera(width=1280, height=720, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
+             pyvirtualcam.Camera(width=1280, height=720, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+            black_image = np.zeros((720, 1280, 3), dtype=np.uint8)
             while True:
                 if not self.running:
                     cam.send(black_image)
@@ -83,10 +83,13 @@ class Inference:
                     black_image=None
                     break
             cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1920)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,1080)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
                 # Process the first frame to initialize
             ret, frame = cap.read()
+            frame_height,frame_width=frame.shape[:2]
+            if frame_height!=720.0 or frame_width!=1280:
+                frame=cv2.resize(frame,(1280,720))
             if not ret:
                 self.logger.debug("No camera input found.")
                 return
@@ -96,8 +99,7 @@ class Inference:
                     break
                 frame=cv2.flip(frame, 1)
                 frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_fhd = cv2.resize(frame_clr,(1920,1080))
-                cam2.send(frame_fhd)
+                cam2.send(frame)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
@@ -128,23 +130,24 @@ class Inference:
         self.active=True
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
-        if result_height>1080:
-            result=cv2.resize(result,(int(result_width*1080/result_height),1080))
+        if result_height>720:
+            result=cv2.resize(result,(int(result_width*720/result_height),720))
         result_height,result_width=result.shape[:2]
-        if result_width>1920:
-            result=cv2.resize(result,(1920,int(result_height*1920/result_width)))
+        if result_width>1280:
+            result=cv2.resize(result,(1280,int(result_height*1280/result_width)))
         result_height,result_width=result.shape[:2]
-        x_offset=(1920-result_width)//2
-        y_offset=1080-result_height
+        x_offset=(1280-result_width)//2
+        y_offset=720-result_height
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image:
             background=cv2.imread(self.background_image)
-            bg_image_resize=cv2.resize(background,(1920,1080))
-            out=self.background_blur(frame,bg_image_resize)
+            bg_image_resize=cv2.resize(background,(1280,720))
+            out=self.background_blur(pad,bg_image_resize)
             if self.green_screen:
                 green_img=cv2.imread(self.green_screen)
-                green_img=cv2.resize(green_img,(1920,1080))
+                green_img=cv2.resize(green_img,(1280,720))
+                green_img=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 out=self.overlay_on_monitor(green_img)
             cam.send(out)
         else:
@@ -240,7 +243,7 @@ class Inference:
         cam.send(blended)
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
-            result=self.session.run(None,{"input":input_blob})
+            result=self.session.run(None,{"input":input_blob})[0]
             mask=self.postprocess(result,frame.shape[:2])
             fg=frame.astype(np.float32)/255.0
             bg=background_img.astype(np.float32)/255.0
