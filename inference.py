@@ -99,7 +99,7 @@ class Inference:
                     break
                 frame=cv2.flip(frame, 1)
                 frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                cam2.send(frame)
+                cam2.send(frame_clr)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
