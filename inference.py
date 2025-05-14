@@ -143,6 +143,7 @@ class Inference:
         if self.background_image:
             background=cv2.imread(self.background_image)
             bg_image_resize=cv2.resize(background,(1280,720))
+            bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
             out=self.background_blur(pad,bg_image_resize)
             if self.green_screen:
                 green_img=cv2.imread(self.green_screen)
