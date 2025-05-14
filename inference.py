@@ -60,6 +60,7 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
+        self.pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
@@ -120,7 +121,6 @@ class Inference:
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
-        pad=np.zeros((1080, 1920, 3), dtype=np.uint8)
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
         if result_height>1080:
@@ -130,7 +130,8 @@ class Inference:
             result=cv2.resize(result,(1920,int(result_height*1920/result_width)))
         result_height,result_width=result.shape[:2]
         x_offset=(1920-result_width)//2
-        y_offset=0
+        y_offset=1080-result_height
+        pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
@@ -228,6 +229,7 @@ class Inference:
                     break
                 result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
                 result=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+                result = result[:-100, :, :]
                 for i, line in enumerate(text_lines):
                     y = y0 + i * dy
                     cv2.putText(

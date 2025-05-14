@@ -19,13 +19,13 @@ class InferenceConfig(PrintableConfig):
     checkpoint_W: str = make_abs_path('../../pretrained_weights/liveportrait/base_models/warping_module.pth')  # path to checkpoint
 
     checkpoint_S: str = make_abs_path('../../pretrained_weights/liveportrait/retargeting_models/stitching_retargeting_module.pth')  # path to checkpoint
-    flag_use_half_precision: bool = False  # whether to use half precision
+    flag_use_half_precision: bool = True  # whether to use half precision
 
     flag_lip_zero: bool = False  # whether let the lip to close state before animation, only take effect when flag_eye_retargeting and flag_lip_retargeting is False
     lip_zero_threshold: float = 0.03
 
-    flag_eye_retargeting: bool = False
-    flag_lip_retargeting: bool = False
+    flag_eye_retargeting: bool = True
+    flag_lip_retargeting: bool = True
     flag_stitching: bool = True  # we recommend setting it to True!
 
     flag_relative: bool = True  # whether to use relative motion
