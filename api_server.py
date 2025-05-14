@@ -47,14 +47,14 @@ class APIServer:
                         if inp in self.file_names:
                             try:
                                 if int(j_input)==7 or int(j_input)==11:
-                                    self.set_param(**{"pitch":1,
+                                    self.set_param(**{"pitch":0,
                                         "yaw":1,
                                         "roll":1,
                                         "expression":1.05,
                                         "scale":1.1,
                                         "t":1})
                                 else:
-                                    self.set_param(**{"roll":0.7,"yaw":0.7,"pitch":0.7,"expression":1.05,"scale":1.1,"t":1})
+                                    self.set_param(**{"roll":0.2,"yaw":0.2,"pitch":0,"expression":1.05,"scale":1,"t":1})
                                 self.set_source_funct(f"{self.source_img_dir}/{j_input}.jpg")
                                 self.handle_increment(int(j_input))
                                 return jsonify({"status": "success", "input": j_input}), 200
