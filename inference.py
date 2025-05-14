@@ -148,7 +148,7 @@ class Inference:
             if self.green_screen:
                 green_img=cv2.imread(self.green_screen)
                 green_img=cv2.resize(green_img,(1280,720))
-                green_img=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                green_img=cv2.cvtColor(green_img, cv2.COLOR_BGR2RGB)
                 out=self.overlay_on_monitor(green_img,out)
             cam.send(out)
         else:
@@ -161,8 +161,8 @@ class Inference:
         hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
         
         # Define green color range
-        lower_green = np.array([35, 40, 40])
-        upper_green = np.array([85, 255, 255])
+        lower_green = np.array([50, 100, 100])
+        upper_green = np.array([95, 255, 255])
         
         # Create mask and find contours
         mask = cv2.inRange(hsv, lower_green, upper_green)
