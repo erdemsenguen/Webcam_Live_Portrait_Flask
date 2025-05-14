@@ -167,7 +167,7 @@ class Inference:
         # Create mask and find contours
         mask = cv2.inRange(hsv, lower_green, upper_green)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
         mask = cv2.dilate(mask, kernel, iterations=1)
         if not contours:
             print("No green screen found.")
