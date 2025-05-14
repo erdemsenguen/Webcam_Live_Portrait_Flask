@@ -90,9 +90,8 @@ class Inference:
                 if not ret:
                     break
                 frame=cv2.flip(frame, 1)
-                frame_fhd= cv2.resize(frame,(1920,1080))
-                frame_fhd = cv2.cvtColor(frame_fhd, cv2.COLOR_BGR2RGB)
-                cam2.send(frame_fhd)
+                frame_clr = cv2.cvtColor(frame_clr, cv2.COLOR_BGR2RGB)
+                cam2.send(frame_clr)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
@@ -108,9 +107,9 @@ class Inference:
                         self.manipulation(cam=cam,frame=frame)
                     else:
                         self.log_counter_face_success=0
-                        self.no_manipulation(cam=cam,frame=frame_fhd)
+                        self.no_manipulation(cam=cam,frame=frame_clr)
                 else:
-                    self.no_manipulation(cam=cam,frame=frame_fhd)
+                    self.no_manipulation(cam=cam,frame=frame_clr)
                     if self.log_counter_face_not_found==0:
                         self.logger.debug("Face not found.")
                         self.log_counter_face_not_found+=1
@@ -136,8 +135,9 @@ class Inference:
         if isinstance(self.background_image, np.ndarray):
             bg_image_resize=cv2.resize(self.background_image,(1920,1080))
             bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
-            segment = self.segmentor.process(pad)
-            raw_mask = segment.segmentation_mask 
+            small = cv2.resize(pad, (960, 540))
+            raw_mask = self.segmentor.process(small).segmentation_mask
+            raw_mask = cv2.resize(raw_mask, (1920, 1080))
             binary_mask = (raw_mask > 0.5).astype(np.uint8)
             dilated = cv2.dilate(binary_mask, np.ones((15, 15), np.uint8), iterations=1)
             expanded_mask = dilated.astype(np.float32)
