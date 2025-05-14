@@ -119,7 +119,6 @@ class Inference:
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
             cap.release()        
-        # live_portrait_pipeline.execute_frame(result_bgr)
     def manipulation(self,cam,frame):
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
