@@ -219,8 +219,8 @@ class Inference:
         return combined
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
-        if frame.shape[1] != 1920 or frame.shape[0] != 1080:
-            frame = cv2.resize(frame, (1920, 1080))
+        if frame.shape[1] != 1280 or frame.shape[0] != 720:
+            frame = cv2.resize(frame, (1280, 720))
 
         if self.log_counter_cam_dupe==0:
             self.log_counter_cam_dupe+=1
@@ -232,11 +232,11 @@ class Inference:
         try:
             alpha_mask = overlay_resized[..., 3:]/255
         except Exception as e:
-            alpha_mask= np.full((1080,1920),0.4)
+            alpha_mask= np.full((720,1280),0.4)
             self.logger.error(e) 
         blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
         blended = blended.astype(np.uint8)
-        blended = cv2.resize(blended,(1920,1080))
+        blended = cv2.resize(blended,(1280,720))
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
@@ -249,7 +249,7 @@ class Inference:
             bg=background_img.astype(np.float32)/255.0
             composite = fg * mask + bg * (1 - mask)
             composite = (composite * 255).astype(np.uint8) 
-            return cv2.resize(composite,(1920,1080))
+            return cv2.resize(composite,(1280,720))
     def preprocess(self,frame):
         img = cv2.resize(frame, (320, 320)).astype(np.float32) / 255.0
         img = img.transpose(2, 0, 1)[np.newaxis, :]
