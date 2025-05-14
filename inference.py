@@ -64,7 +64,8 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx")
+        self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
+                                          providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.pad=np.zeros((720, 1280, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
