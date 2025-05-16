@@ -139,12 +139,12 @@ class Inference:
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image_path:
-            self.logger("Background starts!")
+            self.logger.debug("Background starts!")
             background_time=time.time()
             background=self.background_image
             bg_image_resize=cv2.cvtColor(background,cv2.COLOR_BGR2RGB)
             out=self.background_blur(pad,bg_image_resize)
-            self.logger(f"Background took {time.time()-background_time} seconds!")
+            self.logger.debug(f"Background took {time.time()-background_time} seconds!")
             if self.green_screen:
                 self.logger.debug(f"Monitor overlay starts!")
                 moni=time.time()
@@ -235,8 +235,7 @@ class Inference:
         self.active=False
         self.source_image_path=None
         self.first_iter=True
-        
-        blended = (1.0 - self.alpha_mask) * frame + self.alpha_mask * self.overlay_rgb
+        blended=cv2.addWeighted(frame, 1.0 - 0.2, self.overlay_rgb, 0.2, 0)
         blended = blended.astype(np.uint8)
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
