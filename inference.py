@@ -96,7 +96,7 @@ class Inference:
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT,540)
             ret, frame = cap.read()
             frame_height,frame_width=frame.shape[:2]
-            if frame_height!=960 or frame_width!=540:
+            if frame_height!=540 or frame_width!=960:
                 frame=cv2.resize(frame,(960,540))
             if not ret:
                 self.logger.debug("No camera input found.")
