@@ -95,9 +95,6 @@ class Inference:
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,960)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT,540)
             ret, frame = cap.read()
-            frame_height,frame_width=frame.shape[:2]
-            if frame_height!=540 or frame_width!=960:
-                frame=cv2.resize(frame,(960,540))
             if not ret:
                 self.logger.debug("No camera input found.")
                 return
@@ -107,6 +104,9 @@ class Inference:
                 if not ret:
                     break
                 frame=cv2.flip(frame, 1)
+                if frame_height!=540 or frame_width!=960:
+                    frame_height,frame_width=frame.shape[:2]
+                    frame=cv2.resize(frame,(960,540))
                 frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_clr)
                 is_face = face_detector(frame)
