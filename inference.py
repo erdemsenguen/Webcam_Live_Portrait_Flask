@@ -46,8 +46,15 @@ class Inference:
         self.active=False
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-        self.overlay=cv2.resize(self.overlay,(1280,720))
+        self.overlay=cv2.resize(self.overlay,(960,540))
+        self.overlay_rgb = self.overlay[..., :3]
+        try:
+            self.alpha_mask = self.overlay[..., 3:]/255
+        except Exception as e:
+            self.alpha_mask= np.full((540,960),0.4)
+            self.logger.error(e) 
         self.background_image=None
+        self.background_image_path=None
         self.green_screen=None
         self.previous_green_screen=None
         self.backend=None
@@ -67,15 +74,15 @@ class Inference:
         self.prev=0
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-        self.pad=np.zeros((720, 1280, 3), dtype=np.uint8)
+        self.pad=np.zeros((540, 960, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-        with pyvirtualcam.Camera(width=1280, height=720, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=1280, height=720, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
-            black_image = np.zeros((720, 1280, 3), dtype=np.uint8)
+        with pyvirtualcam.Camera(width=960, height=540, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
+             pyvirtualcam.Camera(width=960, height=540, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+            black_image = np.zeros((540, 960, 3), dtype=np.uint8)
             while True:
                 if not self.running:
                     cam.send(black_image)
@@ -85,12 +92,12 @@ class Inference:
                     black_image=None
                     break
             cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,960)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,540)
             ret, frame = cap.read()
             frame_height,frame_width=frame.shape[:2]
-            if frame_height!=720.0 or frame_width!=1280:
-                frame=cv2.resize(frame,(1280,720))
+            if frame_height!=960 or frame_width!=540:
+                frame=cv2.resize(frame,(960,540))
             if not ret:
                 self.logger.debug("No camera input found.")
                 return
@@ -134,26 +141,16 @@ class Inference:
         self.active=True
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
-        if result_height>720:
-            result=cv2.resize(result,(int(result_width*720/result_height),720))
-        result_height,result_width=result.shape[:2]
-        if result_width>1280:
-            result=cv2.resize(result,(1280,int(result_height*1280/result_width)))
-        result_height,result_width=result.shape[:2]
-        x_offset=(1280-result_width)//2
-        y_offset=720-result_height
+        x_offset=(960-result_width)//2
+        y_offset=540-result_height
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
-        if self.background_image:
-            background=cv2.imread(self.background_image)
-            bg_image_resize=cv2.resize(background,(1280,720))
-            bg_image_resize=cv2.cvtColor(bg_image_resize,cv2.COLOR_BGR2RGB)
+        if self.background_image_path:
+            background=self.background_image
+            bg_image_resize=cv2.cvtColor(background,cv2.COLOR_BGR2RGB)
             out=self.background_blur(pad,bg_image_resize)
             if self.green_screen:
-                green_img=cv2.imread(self.green_screen)
-                green_img=cv2.resize(green_img,(1280,720))
-                green_img=cv2.cvtColor(green_img, cv2.COLOR_BGR2RGB)
-                out=self.overlay_on_monitor(green_img,out)
+                out=self.overlay_on_monitor(self.green_img,out)
             cam.send(out)
         else:
             cam.send(pad)
@@ -226,7 +223,7 @@ class Inference:
 
         # Combine background and foreground
         combined = cv2.add(bg_masked, fg_masked)
-        combined = cv2.resize(combined,(1280,720))
+        combined = cv2.resize(combined,(960,540))
         return combined
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
@@ -235,13 +232,8 @@ class Inference:
         self.active=False
         self.source_image_path=None
         self.first_iter=True
-        overlay_rgb = self.overlay[..., :3]
-        try:
-            alpha_mask = self.overlay[..., 3:]/255
-        except Exception as e:
-            alpha_mask= np.full((720,1280),0.4)
-            self.logger.error(e) 
-        blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
+        
+        blended = (1.0 - self.alpha_mask) * frame + self.alpha_mask * self.overlay_rgb
         blended = blended.astype(np.uint8)
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
@@ -255,8 +247,8 @@ class Inference:
             bg=background_img.astype(np.float32)/255.0
             composite = fg * mask + bg * (1 - mask)
             composite = (composite * 255).astype(np.uint8)
-            if composite.shape[:2] != (720,1280): 
-                return cv2.resize(composite,(1280,720))
+            if composite.shape[:2] != (540,960): 
+                return cv2.resize(composite,(960,540))
             else:
                 return composite
     def preprocess(self,frame):
@@ -285,6 +277,9 @@ class Inference:
                 pass
             else:
                 self.green_screen=random.choice(self.green_screens)
+                self.green_img=cv2.imread(self.green_screen)
+                self.green_img=cv2.resize(self.green_img,(960,540))
+                self.green_img=cv2.cvtColor(self.green_img, cv2.COLOR_BGR2RGB)
         else:
             self.green_screen=None
             try:
@@ -292,9 +287,11 @@ class Inference:
                 self.source_image_path=source_img_path
                 self.logger.debug("Image set successfully!")
                 if source_img_path.endswith("7.jpg") or source_img_path.endswith("11.jpg"):
-                    self.background_image=None
+                    self.background_image_path=None
                 else:
-                    self.background_image=random.choice(self.background_images)
+                    self.background_image_path=random.choice(self.background_images)
+                    self.background_image=cv2.imread(self.background_image_path)
+                    self.background_image=cv2.resize(self.background_image,(540,540))
                 return "Image set successfully."
             except Exception as e:
                 self.source_image_path=None
