@@ -289,7 +289,7 @@ class Inference:
                 else:
                     self.background_image_path=random.choice(self.background_images)
                     self.background_image=cv2.imread(self.background_image_path)
-                    self.background_image=cv2.resize(self.background_image,(540,540))
+                    self.background_image=cv2.resize(self.background_image,(960,540))
                 return "Image set successfully."
             except Exception as e:
                 self.source_image_path=None
