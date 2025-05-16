@@ -97,8 +97,6 @@ class Inference:
             while True:
                 time_elapsed=time.time()-self.prev
                 ret, frame = cap.read()
-                if time_elapsed>1./self.frame_rate:
-                    continue
                 if not ret:
                     break
                 frame=cv2.flip(frame, 1)
@@ -115,17 +113,20 @@ class Inference:
                             self.log_counter_face_start+=1
                             self.log_counter_face_not_found=0
                     if self.source_image_path:
-                        self.manipulation(cam=cam,frame=frame)
+                        if time_elapsed>=1./self.frame_rate:
+                            self.manipulation(cam=cam,frame=frame)
+                            self.prev=time.time()
                     else:
                         self.log_counter_face_success=0
-                        self.no_manipulation(cam=cam,frame=frame_clr)
+                        if time_elapsed>=1./self.frame_rate:
+                            self.no_manipulation(cam=cam,frame=frame_clr)
+                            self.prev=time.time()
                 else:
                     self.no_manipulation(cam=cam,frame=frame_clr)
                     if self.log_counter_face_not_found==0:
                         self.logger.debug("Face not found.")
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
-                prev=time.time()
             cap.release()        
     def manipulation(self,cam,frame):
         self.log_counter_cam_dupe=0
