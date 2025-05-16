@@ -70,8 +70,6 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.frame_rate=24
-        self.prev=0
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.pad=np.zeros((540, 960, 3), dtype=np.uint8)
@@ -118,14 +116,10 @@ class Inference:
                             self.log_counter_face_start+=1
                             self.log_counter_face_not_found=0
                     if self.source_image_path:
-                        if time_elapsed>=1./self.frame_rate:
-                            self.manipulation(cam=cam,frame=frame)
-                            self.prev=time.time()
+                        self.manipulation(cam=cam,frame=frame)
                     else:
                         self.log_counter_face_success=0
-                        if time_elapsed>=1./self.frame_rate:
-                            self.no_manipulation(cam=cam,frame=frame_clr)
-                            self.prev=time.time()
+                        self.no_manipulation(cam=cam,frame=frame_clr)
                 else:
                     self.no_manipulation(cam=cam,frame=frame_clr)
                     if self.log_counter_face_not_found==0:
@@ -134,6 +128,8 @@ class Inference:
                     self.log_counter_face_start=0
             cap.release()        
     def manipulation(self,cam,frame):
+        self.logger.debug("Manipulation starts!")
+        mani=time.time()
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
         self.active=True
@@ -144,14 +140,22 @@ class Inference:
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image_path:
+            self.logger("Background starts!")
+            background_time=time.time()
             background=self.background_image
             bg_image_resize=cv2.cvtColor(background,cv2.COLOR_BGR2RGB)
             out=self.background_blur(pad,bg_image_resize)
+            self.logger(f"Background took {time.time()-background_time} seconds!")
             if self.green_screen:
+                self.logger.debug(f"Monitor overlay starts!")
+                moni=time.time()
                 out=self.overlay_on_monitor(self.green_img,out)
+                self.logger.debug(f"Monitor took {time.time()-moni} seconds")
             cam.send(out)
+            self.logger.debug(f"Manipulation with background took and with monitor projection {time.time()-mani} seconds!")
         else:
             cam.send(pad)
+            self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
         if self.log_counter_face_success==0:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
@@ -224,6 +228,8 @@ class Inference:
         combined = cv2.resize(combined,(960,540))
         return combined
     def no_manipulation(self,cam,frame):
+        self.logger.debug("No manipulation starts.")
+        no_mani=time.time()
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
         if self.log_counter_cam_dupe==0:
             self.log_counter_cam_dupe+=1
@@ -237,6 +243,7 @@ class Inference:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
         cam.send(blended)
+        self.logger.debug(f"No manipulation took {time.time()-no_mani} seconds!")
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
             result=self.session.run(None,{"input.1":input_blob})[0]
