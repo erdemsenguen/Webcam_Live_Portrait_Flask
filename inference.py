@@ -92,8 +92,8 @@ class Inference:
                     black_image=None
                     break
             cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,960)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,540)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,760)
             ret, frame = cap.read()
             if not ret:
                 self.logger.debug("No camera input found.")
@@ -103,8 +103,8 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame=cv2.flip(frame, 1)
                 frame=cv2.resize(frame,(960,540))
+                frame=cv2.flip(frame, 1)
                 frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 cam2.send(frame_clr)
                 is_face = face_detector(frame)
