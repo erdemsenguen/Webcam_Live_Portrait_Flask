@@ -63,6 +63,8 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
+        self.frame_rate=24
+        self.prev=0
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.pad=np.zeros((720, 1280, 3), dtype=np.uint8)
@@ -92,8 +94,11 @@ class Inference:
             if not ret:
                 self.logger.debug("No camera input found.")
                 return
-            while True:    
+            while True:
+                time_elapsed=time.time()-self.prev
                 ret, frame = cap.read()
+                if time_elapsed>1./self.frame_rate:
+                    continue
                 if not ret:
                     break
                 frame=cv2.flip(frame, 1)
@@ -120,6 +125,7 @@ class Inference:
                         self.logger.debug("Face not found.")
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
+                prev=time.time()
             cap.release()        
     def manipulation(self,cam,frame):
         self.log_counter_cam_dupe=0
