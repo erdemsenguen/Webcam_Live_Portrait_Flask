@@ -45,10 +45,10 @@ class Inference:
         self.active=False
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
+        self.overlay=cv2.resize(self.overlay,(1280,720))
         self.background_image=None
         self.green_screen=None
         self.previous_green_screen=None
-        # Initialize webcam 'assets/examples/driving/d6.mp4'
         self.backend=None
         self.log_counter_face_start=0
         self.log_counter_face_success=0
@@ -84,7 +84,6 @@ class Inference:
             cap = cv2.VideoCapture(0)
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
-                # Process the first frame to initialize
             ret, frame = cap.read()
             frame_height,frame_width=frame.shape[:2]
             if frame_height!=720.0 or frame_width!=1280:
@@ -104,7 +103,6 @@ class Inference:
                     self.logger.debug("DeepFake source image is set!")
                     self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
                     self.first_iter=False
-                # Process the frame
                 if is_face: 
                     if self.log_counter_face_start==0:
                             self.logger.debug("Face found.")
@@ -122,7 +120,6 @@ class Inference:
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
             cap.release()        
-        # live_portrait_pipeline.execute_frame(result_bgr)
     def manipulation(self,cam,frame):
         self.log_counter_cam_dupe=0
         self.log_counter_cam_dupe_success=0
@@ -156,24 +153,38 @@ class Inference:
             self.logger.debug("Face control established.")
             self.log_counter_face_success+=1
     def overlay_on_monitor(self,background_img, overlay_img):
-        # Convert to HSV to detect green more robustly
+        def order_points(pts):
+            rect = np.zeros((4, 2), dtype="float32")
+            s = pts.sum(axis=1)
+            diff = np.diff(pts, axis=1)
+            rect[0] = pts[np.argmin(s)]
+            rect[2] = pts[np.argmax(s)]
+            rect[1] = pts[np.argmin(diff)]
+            rect[3] = pts[np.argmax(diff)]
+            return rect
+        def expand_quad(pts, expand_px):
+            cx, cy = np.mean(pts, axis=0)
+            expanded = []
+            for x, y in pts:
+                direction = np.array([x - cx, y - cy], dtype=np.float32)
+                norm = np.linalg.norm(direction)
+                if norm != 0:
+                    unit = direction / norm
+                    new_pt = np.array([x, y]) + unit * expand_px
+                else:
+                    new_pt = np.array([x, y])
+                expanded.append(new_pt)
+            return np.array(expanded, dtype="float32")
         if self.previous_green_screen==None or (self.previous_green_screen != self.green_screen):
-            hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)
-            
-            # Define green color range
+            hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)            
             lower_green = np.array([50, 100, 100])
-            upper_green = np.array([95, 255, 255])
-            
-            # Create mask and find contours
+            upper_green = np.array([95, 255, 255])            
             mask = cv2.inRange(hsv, lower_green, upper_green)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if not contours:
                 print("No green screen found.")
-                return background_img
-            
-            # Assume largest green area is the monitor
+                return background_img            
             largest_contour = max(contours, key=cv2.contourArea)
-            # Get bounding box or polygon approximation
             epsilon = 0.02 * cv2.arcLength(largest_contour, True)
             approx = cv2.approxPolyDP(largest_contour, epsilon, True)
 
@@ -188,32 +199,6 @@ class Inference:
                     ], dtype="float32")
             else:
                 dst_pts = np.array([point[0] for point in approx], dtype="float32")
-
-
-            # Sort corners: top-left, top-right, bottom-right, bottom-left
-            def order_points(pts):
-                rect = np.zeros((4, 2), dtype="float32")
-                s = pts.sum(axis=1)
-                diff = np.diff(pts, axis=1)
-                rect[0] = pts[np.argmin(s)]
-                rect[2] = pts[np.argmax(s)]
-                rect[1] = pts[np.argmin(diff)]
-                rect[3] = pts[np.argmax(diff)]
-                return rect
-            def expand_quad(pts, expand_px):
-                cx, cy = np.mean(pts, axis=0)
-                expanded = []
-                for x, y in pts:
-                    direction = np.array([x - cx, y - cy], dtype=np.float32)
-                    norm = np.linalg.norm(direction)
-                    if norm != 0:
-                        unit = direction / norm
-                        new_pt = np.array([x, y]) + unit * expand_px
-                    else:
-                        new_pt = np.array([x, y])
-                    expanded.append(new_pt)
-                return np.array(expanded, dtype="float32")
-
             dst_pts = order_points(dst_pts)
             self.dst_pts = expand_quad(dst_pts,2)
             self.previous_green_screen=self.green_screen
@@ -237,24 +222,19 @@ class Inference:
         return combined
     def no_manipulation(self,cam,frame):
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
-        if frame.shape[1] != 1280 or frame.shape[0] != 720:
-            frame = cv2.resize(frame, (1280, 720))
-
         if self.log_counter_cam_dupe==0:
             self.log_counter_cam_dupe+=1
         self.active=False
         self.source_image_path=None
         self.first_iter=True
-        overlay_resized = cv2.resize(self.overlay, (frame.shape[1], frame.shape[0]))
-        overlay_rgb = overlay_resized[..., :3]
+        overlay_rgb = self.overlay[..., :3]
         try:
-            alpha_mask = overlay_resized[..., 3:]/255
+            alpha_mask = self.overlay[..., 3:]/255
         except Exception as e:
             alpha_mask= np.full((720,1280),0.4)
             self.logger.error(e) 
         blended = (1.0 - alpha_mask) * frame + alpha_mask * overlay_rgb
         blended = blended.astype(np.uint8)
-        blended = cv2.resize(blended,(1280,720))
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
@@ -266,8 +246,11 @@ class Inference:
             fg=frame.astype(np.float32)/255.0
             bg=background_img.astype(np.float32)/255.0
             composite = fg * mask + bg * (1 - mask)
-            composite = (composite * 255).astype(np.uint8) 
-            return cv2.resize(composite,(1280,720))
+            composite = (composite * 255).astype(np.uint8)
+            if composite.shape[:2] != (720,1280): 
+                return cv2.resize(composite,(1280,720))
+            else:
+                return composite
     def preprocess(self,frame):
         img = cv2.resize(frame, (320, 320)).astype(np.float32) / 255.0
         img = img.transpose(2, 0, 1)[np.newaxis, :]
@@ -277,6 +260,7 @@ class Inference:
             pred = pred.squeeze()
             pred = cv2.resize(pred, shape[::-1])
             pred = np.clip(pred, 0, 1)
+            pred= np.power(pred, 0.8) # threshold may be lowered
             return pred[:, :, np.newaxis]
 
     def conf_virt_live_webcam(self):
