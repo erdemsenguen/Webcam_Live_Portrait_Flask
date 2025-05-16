@@ -16,6 +16,7 @@ import sys
 import typing
 import random
 import onnxruntime as ort
+import time
 if platform.system() == "Windows":
     from pygrabber.dshow_graph import FilterGraph
 class Inference:
