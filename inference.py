@@ -97,7 +97,6 @@ class Inference:
                 self.logger.debug("No camera input found.")
                 return
             while True:
-                time_elapsed=time.time()-self.prev
                 ret, frame = cap.read()
                 if not ret:
                     break
