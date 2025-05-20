@@ -5,6 +5,7 @@ from .src.config.crop_config import CropConfig
 from .src.live_portrait_pipeline import LivePortraitPipeline
 from .src.crop import face_detector
 from .src.utils.io import load_image_rgb
+from .src.cuda_functions import flip_img,bgr_to_rgb,resize,send_to_cam
 import cv2
 import logging
 import numpy as np
@@ -70,21 +71,23 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
+        self.virtual_cam_res_x=960
+        self.virtual_cam_res_y=540
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-        self.pad=np.zeros((540, 960, 3), dtype=np.uint8)
+        self.pad=np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-        with pyvirtualcam.Camera(width=960, height=540, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=960, height=540, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
-            black_image = np.zeros((540, 960, 3), dtype=np.uint8)
+        with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=24, backend='v4l2loopback', device='/dev/video10') as cam, \
+             pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=24, backend='v4l2loopback', device='/dev/video11') as cam2:
+            black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
             while True:
                 if not self.running:
-                    cam.send(black_image)
-                    cam2.send(black_image)
+                    self.send_to_cam(cam,black_image,False,False)
+                    self.send_to_cam(cam2,black_image,False,False)
                     continue
                 else:
                     black_image=None
@@ -100,10 +103,15 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame=cv2.resize(frame,(960,540))
-                frame=cv2.flip(frame, 1)
-                frame_clr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                cam2.send(frame_clr)
+                frame=resize(frame,
+                             width=self.virtual_cam_res_x,
+                             height=self.virtual_cam_res_y)
+                frame=flip_img(frame)
+                send_to_cam(cam2,frame,
+                            width=self.virtual_cam_res_x,
+                            height=self.virtual_cam_res_y,
+                            flip=False,
+                            color=True)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
@@ -118,14 +126,14 @@ class Inference:
                         self.manipulation(cam=cam,frame=frame)
                     else:
                         self.log_counter_face_success=0
-                        self.no_manipulation(cam=cam,frame=frame_clr)
+                        self.no_manipulation(cam=cam,frame=frame)
                 else:
-                    self.no_manipulation(cam=cam,frame=frame_clr)
+                    self.no_manipulation(cam=cam,frame=frame)
                     if self.log_counter_face_not_found==0:
                         self.logger.debug("Face not found.")
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
-            cap.release()        
+            cap.release()
     def manipulation(self,cam,frame):
         self.logger.debug("Manipulation starts!")
         mani=time.time()
@@ -141,16 +149,20 @@ class Inference:
         if self.background_image_path:
             self.logger.debug("Background starts!")
             background_time=time.time()
-            background=self.background_image
-            bg_image_resize=cv2.cvtColor(background,cv2.COLOR_BGR2RGB)
-            out=self.background_blur(pad,bg_image_resize)
+            background=bgr_to_rgb(self.background_image)
+            out=self.background_blur(pad,background)
             self.logger.debug(f"Background took {time.time()-background_time} seconds!")
             if self.green_screen:
                 self.logger.debug(f"Monitor overlay starts!")
                 moni=time.time()
                 out=self.overlay_on_monitor(self.green_img,out)
                 self.logger.debug(f"Monitor took {time.time()-moni} seconds")
-            cam.send(out)
+            send_to_cam(cam=cam,
+                        frame=out,
+                        width=self.virtual_cam_res_x,
+                        height=self.virtual_cam_res_y,
+                        flip=False,
+                        color=False)
             self.logger.debug(f"Manipulation with background took and with monitor projection {time.time()-mani} seconds!")
         else:
             cam.send(pad)
@@ -224,7 +236,9 @@ class Inference:
 
         # Combine background and foreground
         combined = cv2.add(bg_masked, fg_masked)
-        combined = cv2.resize(combined,(960,540))
+        combined = resize(combined,
+                          width=self.virtual_cam_res_x,
+                          height=self.virtual_cam_res_y)
         return combined
     def no_manipulation(self,cam,frame):
         self.logger.debug("No manipulation starts.")
@@ -240,7 +254,12 @@ class Inference:
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
-        cam.send(blended)
+        send_to_cam(cam=cam,
+                    frame=blended,
+                    width=self.virtual_cam_res_x,
+                    height=self.virtual_cam_res_y,
+                    flip=False,
+                    color=False)
         self.logger.debug(f"No manipulation took {time.time()-no_mani} seconds!")
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
@@ -251,17 +270,19 @@ class Inference:
             composite = fg * mask + bg * (1 - mask)
             composite = (composite * 255).astype(np.uint8)
             if composite.shape[:2] != (540,960): 
-                return cv2.resize(composite,(960,540))
+                return resize(composite,
+                              width=self.virtual_cam_res_x,
+                              height=self.virtual_cam_res_y)
             else:
                 return composite
     def preprocess(self,frame):
-        img = cv2.resize(frame, (320, 320)).astype(np.float32) / 255.0
-        img = img.transpose(2, 0, 1)[np.newaxis, :]
-        return img.astype(np.float32)
-    
+        frame=resize(frame,self.virtual_cam_res_x,self.virtual_cam_res_y)
+        frame=frame.astype(np.float32/255.0)
+        frame = frame.transpose(2, 0, 1)[np.newaxis, :]
+        return frame.astype(np.float32)
     def postprocess(self, pred, shape):
             pred = pred.squeeze()
-            pred = cv2.resize(pred, shape[::-1])
+            pred = resize(pred, width=shape[1], height=shape[0])
             pred = np.clip(pred, 0, 1)
             pred= np.power(pred, 0.8) # threshold may be lowered
             return pred[:, :, np.newaxis]
@@ -281,8 +302,8 @@ class Inference:
             else:
                 self.green_screen=random.choice(self.green_screens)
                 self.green_img=cv2.imread(self.green_screen)
-                self.green_img=cv2.resize(self.green_img,(960,540))
-                self.green_img=cv2.cvtColor(self.green_img, cv2.COLOR_BGR2RGB)
+                self.green_img=resize(self.green_img,self.virtual_cam_res_x,self.virtual_cam_res_y)
+                self.green_img=bgr_to_rgb(self.green_img)
         else:
             self.green_screen=None
             try:
@@ -294,7 +315,9 @@ class Inference:
                 else:
                     self.background_image_path=random.choice(self.background_images)
                     self.background_image=cv2.imread(self.background_image_path)
-                    self.background_image=cv2.resize(self.background_image,(960,540))
+                    self.background_image=resize(self.background_image,
+                                                 width=self.virtual_cam_res_x,
+                                                 height=self.virtual_cam_res_y)
                 return "Image set successfully."
             except Exception as e:
                 self.source_image_path=None
@@ -307,49 +330,6 @@ class Inference:
         self.running=True
     def stop(self):
         self.stop_signal=True
-    def test(self,video_path:str,conf_list:typing.List[typing.Dict],pic_path:str):
-        base_pic = os.path.splitext(os.path.basename(pic_path))[0]
-        filename =str(base_pic)+'.mp4'
-        output_path = os.path.join("output_videos", filename)
-        os.makedirs("output_videos", exist_ok=True)
-        img = cv2.imread(pic_path)
-        if img is None:
-            raise ValueError(f"Failed to load image from {pic_path}")
-        height, width = img.shape[:2]
-        fps = cv2.VideoCapture(video_path).get(cv2.CAP_PROP_FPS)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID'
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        for conf in conf_list:
-            cap=cv2.VideoCapture(video_path)
-            ret, frame = cap.read()
-            if not ret:
-                self.logger.debug("Reached end of video or failed to read frame.")
-                continue
-            self.set_parameters(**conf)
-            self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, pic_path)
-            text_lines = [f"{key}: {value}" for key, value in conf.items()]
-            y0, dy = 30, 30
-            while True:
-                if not ret:
-                    self.logger.debug("Reached end of video or failed to read frame.")
-                    break
-                result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
-                result=cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
-                result = result[:-100, :, :]
-                for i, line in enumerate(text_lines):
-                    y = y0 + i * dy
-                    cv2.putText(
-                        result, line, (10, y),  # position
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8,                    # font scale
-                        (0, 0, 0),        # black text
-                        2,                      # thickness
-                        cv2.LINE_AA             # anti-aliased
-                    )
-                out.write(result)
-                ret, frame = cap.read()
-        cap.release()
-        out.release()
 if __name__ == '__main__':
     logging.basicConfig(
     level=logging.DEBUG,  # or INFO
