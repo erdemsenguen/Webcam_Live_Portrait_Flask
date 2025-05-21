@@ -30,11 +30,17 @@ class LivePortraitWrapper(object):
         # init M
         self.motion_extractor = load_model(cfg.checkpoint_M, model_config, cfg.device_id, 'motion_extractor')
         log(f'Load motion_extractor done.')
+        if cfg.flag_use_half_precision:
+            self.motion_extractor = self.motion_extractor.half()
         # init W
         self.warping_module = load_model(cfg.checkpoint_W, model_config, cfg.device_id, 'warping_module')
+        if cfg.flag_use_half_precision:
+            self.warping_module = self.warping_module.half()
         log(f'Load warping_module done.')
         # init G
         self.spade_generator = load_model(cfg.checkpoint_G, model_config, cfg.device_id, 'spade_generator')
+        if cfg.flag_use_half_precision:
+            self.spade_generator = self.spade_generator.half()
         log(f'Load spade_generator done.')
         # init S and R
         if cfg.checkpoint_S is not None and osp.exists(cfg.checkpoint_S):
@@ -71,6 +77,8 @@ class LivePortraitWrapper(object):
         x = np.clip(x, 0, 1)  # clip to 0~1
         x = torch.from_numpy(x).permute(0, 3, 1, 2)  # 1xHxWx3 -> 1x3xHxW
         x = x.cuda(self.device_id)
+        if self.cfg.flag_use_half_precision:
+            x = x.half()
         return x
 
     def prepare_driving_videos(self, imgs) -> torch.Tensor:
@@ -88,7 +96,8 @@ class LivePortraitWrapper(object):
         y = np.clip(y, 0, 1)  # clip to 0~1
         y = torch.from_numpy(y).permute(0, 4, 3, 1, 2)  # TxHxWx3x1 -> Tx1x3xHxW
         y = y.cuda(self.device_id)
-
+        if self.cfg.flag_use_half_precision:
+            y = y.half()
         return y
 
     def extract_feature_3d(self, x: torch.Tensor) -> torch.Tensor:
