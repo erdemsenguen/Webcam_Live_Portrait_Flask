@@ -18,7 +18,9 @@ class FrameProcessor():
             if frame is None:
                 return None
             if isinstance(frame, np.ndarray):
+                upload_time=time.time()
                 self.gpu_img.upload(frame)
+                self.logger.debug(f"Upload took {time.time()-upload_time}")
             elif isinstance(frame, cv2.cuda_GpuMat):
                 self.gpu_img = frame
             if height and width:
