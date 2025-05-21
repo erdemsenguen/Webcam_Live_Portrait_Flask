@@ -47,10 +47,6 @@ class Inference:
         self.active=False
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-        self.overlay=operate(frame=self.overlay,
-                             width=self.virtual_cam_res_x,
-                             height=self.virtual_cam_res_y)
-        self.overlay_rgb = self.overlay[..., :3]
         try:
             self.alpha_mask = self.overlay[..., 3:]/255
         except Exception as e:
@@ -76,6 +72,10 @@ class Inference:
         self.img_rgb=None
         self.virtual_cam_res_x=960
         self.virtual_cam_res_y=540
+        self.overlay=operate(frame=self.overlay,
+                             width=self.virtual_cam_res_x,
+                             height=self.virtual_cam_res_y)
+        self.overlay_rgb = self.overlay[..., :3]
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.pad=np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
