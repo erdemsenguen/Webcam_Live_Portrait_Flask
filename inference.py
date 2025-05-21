@@ -340,6 +340,7 @@ class Inference:
         self.running=True
     def stop(self):
         self.stop_signal=True
+        self.cap.stop()
 if __name__ == '__main__':
     logging.basicConfig(
     level=logging.DEBUG,  # or INFO
