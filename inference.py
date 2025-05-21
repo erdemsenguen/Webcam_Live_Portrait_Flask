@@ -5,7 +5,7 @@ from .src.config.crop_config import CropConfig
 from .src.live_portrait_pipeline import LivePortraitPipeline
 from .src.crop import face_detector
 from .src.utils.io import load_image_rgb
-from .src.cuda_functions import operate
+from .src.cuda_functions import FrameProcessor
 import cv2
 import logging
 import numpy as np
@@ -66,6 +66,7 @@ class Inference:
         self.img_rgb=None
         self.virtual_cam_res_x=960
         self.virtual_cam_res_y=540
+        self.cuda_cv2=FrameProcessor()
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider']) 
@@ -80,7 +81,7 @@ class Inference:
             black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
             while True:
                 if not self.running:
-                    operate(cam=cam,
+                    self.cuda_cv2.operate(cam=cam,
                             frame=black_image,
                             width=self.virtual_cam_res_x,
                             height=self.virtual_cam_res_y,
@@ -88,7 +89,7 @@ class Inference:
                             color=False,
                             send_to_cam=True
                             )
-                    operate(cam=cam2,
+                    self.cuda_cv2.operate(cam=cam2,
                             frame=black_image,
                             width=self.virtual_cam_res_x//2,
                             height=self.virtual_cam_res_y//2,
@@ -111,15 +112,16 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame=operate(cam=None,
+                frame=self.cuda_cv2.operate(cam=None,
                               frame=frame,
                               width=self.virtual_cam_res_x,
                               height=self.virtual_cam_res_y,
                               flip=True,
                               color=True,
-                              send_to_cam=False
+                              send_to_cam=False,
+                              download=True
                               )
-                operate(cam=cam2,
+                self.cuda_cv2.operate(cam=cam2,
                         frame=frame,
                         width=self.virtual_cam_res_x//2,
                         height=self.virtual_cam_res_y//2,
@@ -158,9 +160,10 @@ class Inference:
         self.logger.debug(f"The model has generated the image in {time.time()-mani} seconds!")
         result_height,result_width=result.shape[:2]
         if result_height>self.virtual_cam_res_y or result_width>self.virtual_cam_res_x:
-            result=operate(frame=result,
+            result=self.cuda_cv2.operate(frame=result,
                            width=self.virtual_cam_res_y,
-                           height=self.virtual_cam_res_y)
+                           height=self.virtual_cam_res_y,
+                           download=True)
         x_offset=(960-result_width)//2
         y_offset=540-result_height
         pad=self.pad.copy()
@@ -168,7 +171,7 @@ class Inference:
         if self.background_image_path:
             self.logger.debug("Background starts!")
             background_time=time.time()
-            background=operate(frame=self.background_image,
+            background=self.cuda_cv2.operate(frame=self.background_image,
                                width=self.virtual_cam_res_x,
                                height=self.virtual_cam_res_y,
                                color=True)
@@ -177,15 +180,16 @@ class Inference:
             if self.green_screen:
                 self.logger.debug(f"Monitor overlay starts!")
                 moni=time.time()
-                out=self.overlay_on_monitor(self.green_img,out)
+                out=self.overlay_on_monitor(self.green_img,self.cuda_cv2.operate(frame=out,download=True))
                 self.logger.debug(f"Monitor took {time.time()-moni} seconds")
-            operate(cam=cam,
+            self.cuda_cv2.operate(cam=cam,
                     frame=out,
                     width=self.virtual_cam_res_x,
                     height=self.virtual_cam_res_y,
                     flip=False,
                     color=False,
-                    send_to_cam=True)
+                    send_to_cam=True,
+                    download=False)
             self.logger.debug(f"Manipulation with background and with monitor projection took {time.time()-mani} seconds!")
         else:
             cam.send(pad)
@@ -260,7 +264,7 @@ class Inference:
 
         # Combine background and foreground
         combined = cv2.add(bg_masked, fg_masked)
-        combined = operate(frame=combined,
+        combined = self.cuda_cv2.operate(frame=combined,
                           width=self.virtual_cam_res_x,
                           height=self.virtual_cam_res_y)
         return combined
@@ -276,13 +280,14 @@ class Inference:
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
-        operate(cam=cam,
+        self.cuda_cv2.operate(cam=cam,
                     frame=frame,
                     width=self.virtual_cam_res_x,
                     height=self.virtual_cam_res_y,
                     flip=False,
                     color=False,
-                    send_to_cam=True)
+                    send_to_cam=True,
+                    download=False)
         self.logger.debug(f"No manipulation took {time.time()-no_mani} seconds!")
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
@@ -293,24 +298,24 @@ class Inference:
             composite = fg * mask + bg * (1 - mask)
             composite = (composite * 255).astype(np.uint8)
             if composite.shape[:2] != (540,960): 
-                return operate(frame=composite,
+                return self.cuda_cv2.operate(frame=composite,
                               width=self.virtual_cam_res_x,
-                              height=self.virtual_cam_res_y)
+                              height=self.virtual_cam_res_y,download=False)
             else:
                 return composite
     def preprocess(self,frame):
-        frame=operate(frame=frame,
+        frame=self.cuda_cv2.operate(frame=frame,
                       height=320,
-                      width=320)
+                      width=320,download=True)
         frame=frame.astype(np.float32)/255.0
         frame = frame.transpose(2, 0, 1)[np.newaxis, :]
         return frame.astype(np.float32)
     def postprocess(self, pred, shape):
             pred = pred.squeeze()
             pred = np.stack([pred]*3, axis=-1)  # [H, W] → [H, W, 3]
-            pred = operate(frame=pred, 
+            pred = self.cuda_cv2.operate(frame=pred, 
                            width=shape[1], 
-                           height=shape[0])
+                           height=shape[0],download=True)
             pred = np.clip(pred, 0, 1)
             pred= np.power(pred, 0.8) # threshold may be lowered
             return pred
@@ -333,10 +338,11 @@ class Inference:
                     self.change_green_screen=True
                     self.green_img=cv2.imread(self.green_screen)
                     if self.green_screen and self.green_img is not None:
-                        self.green_img=operate(frame=self.green_img,
+                        self.green_img=self.cuda_cv2.operate(frame=self.green_img,
                                             width=self.virtual_cam_res_x,
                                             height=self.virtual_cam_res_y,
-                                            color=True)
+                                            color=True,
+                                            download=True)
         else:
             self.change_green_screen=False
             self.green_screen=None
@@ -349,9 +355,10 @@ class Inference:
                 else:
                     self.background_image_path=random.choice(self.background_images)
                     self.background_image=cv2.imread(self.background_image_path)
-                    self.background_image=operate(frame=self.background_image,
+                    self.background_image=self.cuda_cv2.operate(frame=self.background_image,
                                                  width=self.virtual_cam_res_x,
-                                                 height=self.virtual_cam_res_y)
+                                                 height=self.virtual_cam_res_y,
+                                                 download=True)
                 return "Image set successfully."
             except Exception as e:
                 self.source_image_path=None
