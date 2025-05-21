@@ -5,7 +5,7 @@ import time
 import logging
 class FrameProcessor():
     def __init__(self):
-        self.gpu_img=cv2.cuda_GpuMat()
+        
         self.logger=logging.getLogger(__name__)
     def operate(self,
                 frame,
@@ -17,23 +17,23 @@ class FrameProcessor():
                 height:int=None)->None:
             if frame is None:
                 return None
+            gpu_img=cv2.cuda_GpuMat()
             if isinstance(frame, np.ndarray):
                 if frame.size == 0:
                     self.logger.warning("Empty frame, skipping upload.")
                     return None
-                self.gpu_img.upload(frame)
+                gpu_img.upload(frame)
             elif isinstance(frame, cv2.cuda_GpuMat):
-                self.gpu_img = frame
+                gpu_img = frame
             if height and width:
-                h, w = self.gpu_img.size()
+                h, w = gpu_img.size()
                 if w != width or h != height:
-                    self.gpu_img = self.resize(self.gpu_img, width, height)
+                    gpu_img = self.resize(gpu_img, width, height)
             if color:
-                self.gpu_img=self.bgr_to_rgb(self.gpu_img)
+                gpu_img=self.bgr_to_rgb(gpu_img)
             if flip:
-                self.gpu_img=self.flip_img(self.gpu_img)
-            before_download=time.time()
-            img=self.gpu_img.download()
+                gpu_img=self.flip_img(gpu_img)
+            img=gpu_img.download()
             if send_to_cam:           
                 cam.send(img)
             return img
