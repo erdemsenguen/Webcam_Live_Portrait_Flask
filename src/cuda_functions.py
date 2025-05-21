@@ -1,10 +1,17 @@
 import cv2
 import pyvirtualcam
+import numpy as np
 def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:pyvirtualcam.Camera=None,width:int=None,height:int=None)->None:
-        gpu_img=cv2.cuda_GpuMat
-        gpu_img.upload(frame)
-        if frame.shape[1] != width or frame.shape[0] != height:
-            gpu_img = resize(gpu_img, width, height)
+        if frame is None:
+            return None
+        if isinstance(frame, np.ndarray):
+            gpu_img = cv2.cuda_GpuMat()
+            gpu_img.upload(frame)
+        elif isinstance(frame, cv2.cuda_GpuMat):
+            gpu_img = frame
+        if height and width:
+            if frame.shape[1] != width or frame.shape[0] != height:
+                gpu_img = resize(gpu_img, width, height)
         if color:
             gpu_img=bgr_to_rgb(gpu_img)
         if flip:
