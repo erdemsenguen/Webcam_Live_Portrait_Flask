@@ -332,10 +332,11 @@ class Inference:
                 if self.green_screen!=self.previous_green_screen:
                     self.change_green_screen=True
                     self.green_img=cv2.imread(self.green_screen)
-                    self.green_img=operate(frame=self.green_img,
-                                        width=self.virtual_cam_res_x,
-                                        height=self.virtual_cam_res_y,
-                                        color=True)
+                    if self.green_screen and self.green_img is not None:
+                        self.green_img=operate(frame=self.green_img,
+                                            width=self.virtual_cam_res_x,
+                                            height=self.virtual_cam_res_y,
+                                            color=True)
         else:
             self.change_green_screen=False
             self.green_screen=None
