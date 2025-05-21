@@ -11,7 +11,6 @@ class FrameProcessor():
                 frame,
                 flip:bool=False,
                 color:bool=False,
-                download:bool=False,
                 send_to_cam:bool=False,
                 cam:pyvirtualcam.Camera=None,
                 width:int=None,
@@ -23,19 +22,18 @@ class FrameProcessor():
             elif isinstance(frame, cv2.cuda_GpuMat):
                 self.gpu_img = frame
             if height and width:
-                if frame.shape[1] != width or frame.shape[0] != height:
+                h, w = self.gpu_img.size()
+                if w != width or h != height:
                     self.gpu_img = self.resize(self.gpu_img, width, height)
             if color:
                 self.gpu_img=self.bgr_to_rgb(self.gpu_img)
             if flip:
                 self.gpu_img=self.flip_img(self.gpu_img)
             before_download=time.time()
-            self.logger.debug(f"Download took {time.time()-before_download} seconds")
             img=self.gpu_img.download()
+            self.logger.debug(f"Download took {time.time()-before_download} seconds")
             if send_to_cam:           
                 cam.send(img)
-            else:
-                img=self.gpu_img
             return img
     def resize(self,img,width:int,height:int):
         resized_gpu=cv2.cuda.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
