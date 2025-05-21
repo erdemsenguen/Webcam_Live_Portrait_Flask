@@ -60,6 +60,7 @@ class Inference:
         self.background_image_path=None
         self.green_screen=None
         self.previous_green_screen=None
+        self.change_green_screen=False
         self.backend=None
         self.log_counter_face_start=0
         self.log_counter_face_success=0
@@ -164,6 +165,10 @@ class Inference:
         self.active=True
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         result_height,result_width=result.shape[:2]
+        if result_height>self.virtual_cam_res_y or result_width>self.virtual_cam_res_x:
+            result=operate(frame=result,
+                           width=self.virtual_cam_res_y,
+                           height=self.virtual_cam_res_y)
         x_offset=(960-result_width)//2
         y_offset=540-result_height
         pad=self.pad.copy()
@@ -189,7 +194,7 @@ class Inference:
                     flip=False,
                     color=False,
                     send_to_cam=True)
-            self.logger.debug(f"Manipulation with background took and with monitor projection {time.time()-mani} seconds!")
+            self.logger.debug(f"Manipulation with background and with monitor projection took {time.time()-mani} seconds!")
         else:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
@@ -219,7 +224,7 @@ class Inference:
                     new_pt = np.array([x, y])
                 expanded.append(new_pt)
             return np.array(expanded, dtype="float32")
-        if self.previous_green_screen==None or (self.previous_green_screen != self.green_screen):
+        if self.change_green_screen:
             hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)            
             lower_green = np.array([50, 100, 100])
             upper_green = np.array([95, 255, 255])            
@@ -246,6 +251,7 @@ class Inference:
             dst_pts = order_points(dst_pts)
             self.dst_pts = expand_quad(dst_pts,2)
             self.previous_green_screen=self.green_screen
+            self.change_green_screen=False
         h, w = overlay_img.shape[:2]
         src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
@@ -330,12 +336,15 @@ class Inference:
                 pass
             else:
                 self.green_screen=random.choice(self.green_screens)
-                self.green_img=cv2.imread(self.green_screen)
-                self.green_img=operate(frame=self.green_img,
-                                       width=self.virtual_cam_res_x,
-                                       height=self.virtual_cam_res_y,
-                                       color=True)
+                if self.green_screen!=self.previous_green_screen:
+                    self.change_green_screen=True
+                    self.green_img=cv2.imread(self.green_screen)
+                    self.green_img=operate(frame=self.green_img,
+                                        width=self.virtual_cam_res_x,
+                                        height=self.virtual_cam_res_y,
+                                        color=True)
         else:
+            self.change_green_screen=False
             self.green_screen=None
             try:
                 load_image_rgb(source_img_path)
