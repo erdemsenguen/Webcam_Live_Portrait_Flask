@@ -1,6 +1,7 @@
 import cv2
 import pyvirtualcam
 import numpy as np
+import time
 def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:pyvirtualcam.Camera=None,width:int=None,height:int=None)->None:
         if frame is None:
             return None
@@ -16,7 +17,9 @@ def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:py
             gpu_img=bgr_to_rgb(gpu_img)
         if flip:
             gpu_img=flip_img(gpu_img)
+        before_download=time.time()
         img=gpu_img.download()
+        print(f"Download took {time.time()-before_download}")
         if send_to_cam:           
             cam.send(img)
         return img

@@ -27,8 +27,11 @@ class LivePortraitWrapper(object):
         # init F
         self.appearance_feature_extractor = load_model(cfg.checkpoint_F, model_config, cfg.device_id, 'appearance_feature_extractor')
         log(f'Load appearance_feature_extractor done.')
+        if cfg.flag_use_half_precision:
+            self.appearance_feature_extractor= self.appearance_feature_extractor.half()
         # init M
         self.motion_extractor = load_model(cfg.checkpoint_M, model_config, cfg.device_id, 'motion_extractor')
+
         log(f'Load motion_extractor done.')
         if cfg.flag_use_half_precision:
             self.motion_extractor = self.motion_extractor.half()
