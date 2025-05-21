@@ -2,7 +2,9 @@ import cv2
 import pyvirtualcam
 import numpy as np
 import time
+import logging
 gpu_img=cv2.GpuMat()
+logger=logging.getLogger(__name__)
 def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:pyvirtualcam.Camera=None,width:int=None,height:int=None)->None:
         if frame is None:
             return None
@@ -19,7 +21,7 @@ def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:py
             gpu_img=flip_img(gpu_img)
         before_download=time.time()
         img=gpu_img.download()
-        print(f"Download took {time.time()-before_download}")
+        logger.debug(f"Download took {time.time()-before_download} seconds")
         if send_to_cam:           
             cam.send(img)
         return img
