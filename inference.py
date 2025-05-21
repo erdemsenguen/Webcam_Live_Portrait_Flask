@@ -46,12 +46,6 @@ class Inference:
         self.running=False
         self.active=False
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
-        self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-        try:
-            self.alpha_mask = self.overlay[..., 3:]/255
-        except Exception as e:
-            self.alpha_mask= np.full((540,960),0.4)
-            self.logger.error(e) 
         self.background_image=None
         self.background_image_path=None
         self.green_screen=None
@@ -73,10 +67,6 @@ class Inference:
         self.virtual_cam_res_x=960
         self.virtual_cam_res_y=540
         self.green_img=None
-        self.overlay=operate(frame=self.overlay,
-                             width=self.virtual_cam_res_x,
-                             height=self.virtual_cam_res_y)
-        self.overlay_rgb = self.overlay[..., :3]
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.pad=np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
@@ -282,13 +272,11 @@ class Inference:
         self.active=False
         self.source_image_path=None
         self.first_iter=True
-        blended=cv2.addWeighted(frame, 1.0 - 0.2, self.overlay_rgb, 0.2, 0)
-        blended = blended.astype(np.uint8)
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
         operate(cam=cam,
-                    frame=blended,
+                    frame=frame,
                     width=self.virtual_cam_res_x,
                     height=self.virtual_cam_res_y,
                     flip=False,
