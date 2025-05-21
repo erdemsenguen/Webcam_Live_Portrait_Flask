@@ -323,7 +323,7 @@ class Inference:
                            height=shape[0])
             pred = np.clip(pred, 0, 1)
             pred= np.power(pred, 0.8) # threshold may be lowered
-            return pred[:, :, np.newaxis]
+            return pred
 
     def conf_virt_live_webcam(self):
         if platform.system() == "Windows":
