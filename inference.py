@@ -62,8 +62,8 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.virtual_cam_res_x=1280
-        self.virtual_cam_res_y=720
+        self.virtual_cam_res_x=960
+        self.virtual_cam_res_y=540
         self.cuda_cv2=FrameProcessor()
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
