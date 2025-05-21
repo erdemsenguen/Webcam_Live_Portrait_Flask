@@ -27,8 +27,6 @@ class Inference:
         self.args = tyro.cli(ArgumentConfig)
         self.logger=logging.getLogger(__name__)
         self.cap = WebcamStream()
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,800)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,450)
         self.is_face= None
         self.first_iter=True
         # specify configs for inference
@@ -92,12 +90,6 @@ class Inference:
                 else:
                     black_image=None
                     break
-            
-
-            ret, frame = self.cap.read()
-            if not ret:
-                self.logger.debug("No camera input found.")
-                return
             while True:
                 loop_start=time.time()
                 ret, frame = self.cap.read()
