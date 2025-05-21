@@ -6,6 +6,7 @@ from .src.live_portrait_pipeline import LivePortraitPipeline
 from .src.crop import SCRFD,face_detector
 from .src.utils.io import load_image_rgb
 from .src.cuda_functions import FrameProcessor
+from .src.cam_threading import WebcamStream
 import cv2
 import logging
 import numpy as np
@@ -88,7 +89,7 @@ class Inference:
                 else:
                     black_image=None
                     break
-            cap = cv2.VideoCapture(0)
+            cap = WebcamStream()
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT,760)
             ret, frame = cap.read()
