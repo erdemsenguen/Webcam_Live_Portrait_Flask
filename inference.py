@@ -72,6 +72,7 @@ class Inference:
         self.img_rgb=None
         self.virtual_cam_res_x=960
         self.virtual_cam_res_y=540
+        self.green_img=None
         self.overlay=operate(frame=self.overlay,
                              width=self.virtual_cam_res_x,
                              height=self.virtual_cam_res_y)
