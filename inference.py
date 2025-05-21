@@ -68,7 +68,7 @@ class Inference:
         self.virtual_cam_res_y=540
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
-                                          providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+                                          providers=['CUDAExecutionProvider']) 
         self.pad=np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
@@ -155,6 +155,7 @@ class Inference:
         self.log_counter_cam_dupe_success=0
         self.active=True
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
+        self.logger.debug(f"The model has generated the image in {time.time()-mani} seconds!")
         result_height,result_width=result.shape[:2]
         if result_height>self.virtual_cam_res_y or result_width>self.virtual_cam_res_x:
             result=operate(frame=result,
