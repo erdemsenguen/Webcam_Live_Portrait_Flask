@@ -2,11 +2,11 @@ import cv2
 import pyvirtualcam
 import numpy as np
 import time
+gpu_img=cv2.GpuMat()
 def operate(frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:pyvirtualcam.Camera=None,width:int=None,height:int=None)->None:
         if frame is None:
             return None
         if isinstance(frame, np.ndarray):
-            gpu_img = cv2.cuda_GpuMat()
             gpu_img.upload(frame)
         elif isinstance(frame, cv2.cuda_GpuMat):
             gpu_img = frame
