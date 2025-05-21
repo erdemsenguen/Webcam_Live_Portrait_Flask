@@ -130,7 +130,7 @@ class Inference:
                         send_to_cam=True)
                 face_time=time.time()
                 is_face = face_detector(frame,self.face_detector_model)
-                self.logger(f"Face detector took {time.time()-face_time}")
+                self.logger.debug(f"Face detector took {time.time()-face_time}")
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
                     self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
