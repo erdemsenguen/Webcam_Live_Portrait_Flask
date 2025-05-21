@@ -309,6 +309,9 @@ class Inference:
             else:
                 return composite
     def preprocess(self,frame):
+        frame=operate(frame=frame,
+                      height=320,
+                      width=320)
         frame=frame.astype(np.float32)/255.0
         frame = frame.transpose(2, 0, 1)[np.newaxis, :]
         return frame.astype(np.float32)
