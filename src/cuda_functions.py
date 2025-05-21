@@ -31,11 +31,9 @@ class FrameProcessor():
                 self.gpu_img=self.flip_img(self.gpu_img)
             before_download=time.time()
             self.logger.debug(f"Download took {time.time()-before_download} seconds")
+            img=self.gpu_img.download()
             if send_to_cam:           
-                img=self.gpu_img.download()
                 cam.send(img)
-            if download:
-                img=self.gpu_img.download()
             else:
                 img=self.gpu_img
             return img

@@ -109,6 +109,7 @@ class Inference:
                 self.logger.debug("No camera input found.")
                 return
             while True:
+                loop_start=time.time()
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -119,7 +120,6 @@ class Inference:
                               flip=True,
                               color=True,
                               send_to_cam=False,
-                              download=True
                               )
                 self.cuda_cv2.operate(cam=cam2,
                         frame=frame,
@@ -149,6 +149,7 @@ class Inference:
                         self.logger.debug("Face not found.")
                         self.log_counter_face_not_found+=1
                     self.log_counter_face_start=0
+                self.logger.debug(f"A loop took {time.time()-loop_start} seconds!")
             cap.release()
     def manipulation(self,cam,frame):
         self.logger.debug("Manipulation starts!")
@@ -162,8 +163,7 @@ class Inference:
         if result_height>self.virtual_cam_res_y or result_width>self.virtual_cam_res_x:
             result=self.cuda_cv2.operate(frame=result,
                            width=self.virtual_cam_res_y,
-                           height=self.virtual_cam_res_y,
-                           download=True)
+                           height=self.virtual_cam_res_y)
         x_offset=(960-result_width)//2
         y_offset=540-result_height
         pad=self.pad.copy()
@@ -180,7 +180,7 @@ class Inference:
             if self.green_screen:
                 self.logger.debug(f"Monitor overlay starts!")
                 moni=time.time()
-                out=self.overlay_on_monitor(self.green_img,self.cuda_cv2.operate(frame=out,download=True))
+                out=self.overlay_on_monitor(self.green_img,out)
                 self.logger.debug(f"Monitor took {time.time()-moni} seconds")
             self.cuda_cv2.operate(cam=cam,
                     frame=out,
@@ -188,8 +188,7 @@ class Inference:
                     height=self.virtual_cam_res_y,
                     flip=False,
                     color=False,
-                    send_to_cam=True,
-                    download=False)
+                    send_to_cam=True)
             self.logger.debug(f"Manipulation with background and with monitor projection took {time.time()-mani} seconds!")
         else:
             cam.send(pad)
@@ -286,8 +285,7 @@ class Inference:
                     height=self.virtual_cam_res_y,
                     flip=False,
                     color=False,
-                    send_to_cam=True,
-                    download=False)
+                    send_to_cam=True)
         self.logger.debug(f"No manipulation took {time.time()-no_mani} seconds!")
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
@@ -300,13 +298,13 @@ class Inference:
             if composite.shape[:2] != (540,960): 
                 return self.cuda_cv2.operate(frame=composite,
                               width=self.virtual_cam_res_x,
-                              height=self.virtual_cam_res_y,download=False)
+                              height=self.virtual_cam_res_y)
             else:
                 return composite
     def preprocess(self,frame):
         frame=self.cuda_cv2.operate(frame=frame,
                       height=320,
-                      width=320,download=True)
+                      width=320)
         frame=frame.astype(np.float32)/255.0
         frame = frame.transpose(2, 0, 1)[np.newaxis, :]
         return frame.astype(np.float32)
@@ -315,7 +313,7 @@ class Inference:
             pred = np.stack([pred]*3, axis=-1)  # [H, W] → [H, W, 3]
             pred = self.cuda_cv2.operate(frame=pred, 
                            width=shape[1], 
-                           height=shape[0],download=True)
+                           height=shape[0])
             pred = np.clip(pred, 0, 1)
             pred= np.power(pred, 0.8) # threshold may be lowered
             return pred
@@ -342,7 +340,7 @@ class Inference:
                                             width=self.virtual_cam_res_x,
                                             height=self.virtual_cam_res_y,
                                             color=True,
-                                            download=True)
+                                            )
         else:
             self.change_green_screen=False
             self.green_screen=None
@@ -358,7 +356,7 @@ class Inference:
                     self.background_image=self.cuda_cv2.operate(frame=self.background_image,
                                                  width=self.virtual_cam_res_x,
                                                  height=self.virtual_cam_res_y,
-                                                 download=True)
+                                                 )
                 return "Image set successfully."
             except Exception as e:
                 self.source_image_path=None
