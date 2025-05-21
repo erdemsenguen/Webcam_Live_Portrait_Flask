@@ -5,7 +5,7 @@ from .src.config.crop_config import CropConfig
 from .src.live_portrait_pipeline import LivePortraitPipeline
 from .src.crop import face_detector
 from .src.utils.io import load_image_rgb
-from .src.cuda_functions import flip_img,bgr_to_rgb,resize,send_to_cam
+from .src.cuda_functions import operate
 import cv2
 import logging
 import numpy as np
@@ -47,7 +47,9 @@ class Inference:
         self.active=False
         frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
         self.overlay=cv2.imread(frame_path, cv2.IMREAD_UNCHANGED)
-        self.overlay=cv2.resize(self.overlay,(960,540))
+        self.overlay=operate(frame=self.overlay,
+                             width=self.virtual_cam_res_x,
+                             height=self.virtual_cam_res_y)
         self.overlay_rgb = self.overlay[..., :3]
         try:
             self.alpha_mask = self.overlay[..., 3:]/255
@@ -82,12 +84,26 @@ class Inference:
 
     def main(self):
         with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=24, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=24, backend='v4l2loopback', device='/dev/video11') as cam2:
+             pyvirtualcam.Camera(width=self.virtual_cam_res_x//2, height=self.virtual_cam_res_y//2, fps=24, backend='v4l2loopback', device='/dev/video11') as cam2:
             black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
             while True:
                 if not self.running:
-                    self.send_to_cam(cam,black_image,False,False)
-                    self.send_to_cam(cam2,black_image,False,False)
+                    operate(cam=cam,
+                            frame=black_image,
+                            width=self.virtual_cam_res_x,
+                            height=self.virtual_cam_res_y,
+                            flip=False,
+                            color=False,
+                            send_to_cam=True
+                            )
+                    operate(cam=cam2,
+                            frame=black_image,
+                            width=self.virtual_cam_res_x//2,
+                            height=self.virtual_cam_res_y//2,
+                            flip=False,
+                            color=False,
+                            send_to_cam=True
+                            )
                     continue
                 else:
                     black_image=None
@@ -103,15 +119,21 @@ class Inference:
                 ret, frame = cap.read()
                 if not ret:
                     break
-                frame=resize(frame,
-                             width=self.virtual_cam_res_x,
-                             height=self.virtual_cam_res_y)
-                frame=flip_img(frame)
-                send_to_cam(cam2,frame,
-                            width=self.virtual_cam_res_x,
-                            height=self.virtual_cam_res_y,
-                            flip=False,
-                            color=True)
+                frame=operate(cam=None,
+                              frame=frame,
+                              width=self.virtual_cam_res_x,
+                              height=self.virtual_cam_res_y,
+                              flip=True,
+                              color=True,
+                              send_to_cam=False
+                              )
+                operate(cam=cam2,
+                        frame=frame,
+                        width=self.virtual_cam_res_x//2,
+                        height=self.virtual_cam_res_y//2,
+                        flip=False,
+                        color=False,
+                        send_to_cam=True)
                 is_face = face_detector(frame)
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
@@ -149,7 +171,10 @@ class Inference:
         if self.background_image_path:
             self.logger.debug("Background starts!")
             background_time=time.time()
-            background=bgr_to_rgb(self.background_image)
+            background=operate(frame=self.background_image,
+                               width=self.virtual_cam_res_x,
+                               height=self.virtual_cam_res_y,
+                               color=True)
             out=self.background_blur(pad,background)
             self.logger.debug(f"Background took {time.time()-background_time} seconds!")
             if self.green_screen:
@@ -157,12 +182,13 @@ class Inference:
                 moni=time.time()
                 out=self.overlay_on_monitor(self.green_img,out)
                 self.logger.debug(f"Monitor took {time.time()-moni} seconds")
-            send_to_cam(cam=cam,
-                        frame=out,
-                        width=self.virtual_cam_res_x,
-                        height=self.virtual_cam_res_y,
-                        flip=False,
-                        color=False)
+            operate(cam=cam,
+                    frame=out,
+                    width=self.virtual_cam_res_x,
+                    height=self.virtual_cam_res_y,
+                    flip=False,
+                    color=False,
+                    send_to_cam=True)
             self.logger.debug(f"Manipulation with background took and with monitor projection {time.time()-mani} seconds!")
         else:
             cam.send(pad)
@@ -236,7 +262,7 @@ class Inference:
 
         # Combine background and foreground
         combined = cv2.add(bg_masked, fg_masked)
-        combined = resize(combined,
+        combined = operate(frame=combined,
                           width=self.virtual_cam_res_x,
                           height=self.virtual_cam_res_y)
         return combined
@@ -254,12 +280,13 @@ class Inference:
         if self.log_counter_cam_dupe_success==0:
             self.logger.debug("Duplicated camera feed is succesful.")
             self.log_counter_cam_dupe_success+=1
-        send_to_cam(cam=cam,
+        operate(cam=cam,
                     frame=blended,
                     width=self.virtual_cam_res_x,
                     height=self.virtual_cam_res_y,
                     flip=False,
-                    color=False)
+                    color=False,
+                    send_to_cam=True)
         self.logger.debug(f"No manipulation took {time.time()-no_mani} seconds!")
     def background_blur(self,frame,background_img):
             input_blob=self.preprocess(frame)
@@ -270,19 +297,21 @@ class Inference:
             composite = fg * mask + bg * (1 - mask)
             composite = (composite * 255).astype(np.uint8)
             if composite.shape[:2] != (540,960): 
-                return resize(composite,
+                return operate(frame=composite,
                               width=self.virtual_cam_res_x,
                               height=self.virtual_cam_res_y)
             else:
                 return composite
     def preprocess(self,frame):
-        frame=resize(frame,self.virtual_cam_res_x,self.virtual_cam_res_y)
-        frame=frame.astype(np.float32/255.0)
+        frame=frame.astype(np.float32)/255.0
         frame = frame.transpose(2, 0, 1)[np.newaxis, :]
         return frame.astype(np.float32)
     def postprocess(self, pred, shape):
             pred = pred.squeeze()
-            pred = resize(pred, width=shape[1], height=shape[0])
+            pred = np.stack([pred]*3, axis=-1)  # [H, W] → [H, W, 3]
+            pred = operate(frame=pred, 
+                           width=shape[1], 
+                           height=shape[0])
             pred = np.clip(pred, 0, 1)
             pred= np.power(pred, 0.8) # threshold may be lowered
             return pred[:, :, np.newaxis]
@@ -302,8 +331,10 @@ class Inference:
             else:
                 self.green_screen=random.choice(self.green_screens)
                 self.green_img=cv2.imread(self.green_screen)
-                self.green_img=resize(self.green_img,self.virtual_cam_res_x,self.virtual_cam_res_y)
-                self.green_img=bgr_to_rgb(self.green_img)
+                self.green_img=operate(frame=self.green_img,
+                                       width=self.virtual_cam_res_x,
+                                       height=self.virtual_cam_res_y,
+                                       color=True)
         else:
             self.green_screen=None
             try:
@@ -315,7 +346,7 @@ class Inference:
                 else:
                     self.background_image_path=random.choice(self.background_images)
                     self.background_image=cv2.imread(self.background_image_path)
-                    self.background_image=resize(self.background_image,
+                    self.background_image=operate(frame=self.background_image,
                                                  width=self.virtual_cam_res_x,
                                                  height=self.virtual_cam_res_y)
                 return "Image set successfully."
