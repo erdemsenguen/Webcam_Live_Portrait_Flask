@@ -248,8 +248,7 @@ class SCRFD:
             order = order[indices + 1]
 
         return keep
-def face_detector(frame):
-    detector = SCRFD(model_file=f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/pretrained_weights/insightface/models/buffalo_l/det_10g.onnx")    
+def face_detector(frame,detector):    
     boxes, _ = detector.detect(frame, input_size=(640, 640), max_num=1)
     if len(boxes) == 0:
         return False
