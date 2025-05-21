@@ -62,8 +62,8 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.virtual_cam_res_x=800
-        self.virtual_cam_res_y=450
+        self.virtual_cam_res_x=1280
+        self.virtual_cam_res_y=720
         self.cuda_cv2=FrameProcessor()
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
@@ -141,8 +141,8 @@ class Inference:
             result=self.cuda_cv2.operate(frame=result,
                            width=self.virtual_cam_res_y,
                            height=self.virtual_cam_res_y)
-        x_offset=(960-result_width)//2
-        y_offset=540-result_height
+        x_offset=(self.virtual_cam_res_x-result_width)//2
+        y_offset=self.virtual_cam_res_y-result_height
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image_path:
