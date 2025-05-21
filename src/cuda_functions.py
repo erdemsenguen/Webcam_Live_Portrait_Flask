@@ -20,7 +20,6 @@ class FrameProcessor():
             if isinstance(frame, np.ndarray):
                 upload_time=time.time()
                 self.gpu_img.upload(frame)
-                self.logger.debug(f"Upload took {time.time()-upload_time}")
             elif isinstance(frame, cv2.cuda_GpuMat):
                 self.gpu_img = frame
             if height and width:
@@ -33,7 +32,6 @@ class FrameProcessor():
                 self.gpu_img=self.flip_img(self.gpu_img)
             before_download=time.time()
             img=self.gpu_img.download()
-            self.logger.debug(f"Download took {time.time()-before_download} seconds")
             if send_to_cam:           
                 cam.send(img)
             return img
