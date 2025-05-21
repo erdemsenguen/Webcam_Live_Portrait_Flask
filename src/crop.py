@@ -46,7 +46,7 @@ class SCRFD:
             assert os.path.exists(self.model_file)
             self.session = onnxruntime.InferenceSession(
                 self.model_file,
-                providers=["CPUExecutionProvider"],
+                providers=["CUDAExecutionProvider"],
             )    # "CUDAExecutionProvider", 
 
         self.center_cache = {}
@@ -249,7 +249,7 @@ class SCRFD:
 
         return keep
 def face_detector(frame,detector):    
-    boxes, _ = detector.detect(frame, input_size=(640, 640), max_num=1)
+    boxes, _ = detector.detect(frame, input_size=(160, 160), max_num=1)
     if len(boxes) == 0:
         return False
     else:
