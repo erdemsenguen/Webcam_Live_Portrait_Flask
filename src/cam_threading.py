@@ -6,7 +6,7 @@ class WebcamStream:
         self.logger=logging.getLogger(__name__)
         self.cap = cv2.VideoCapture(src)
         if not self.cap.isOpened():
-            self.logger.error("Error: Unable to open video source", src)
+            self.logger.error(f"Error: Unable to open video source {src}")
         self.ret, self.frame = self.cap.read()
         if not self.ret or self.frame is None:
             self.logger.error("Error: Unable to read from the camera.")
