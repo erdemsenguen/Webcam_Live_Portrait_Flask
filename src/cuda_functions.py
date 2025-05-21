@@ -5,9 +5,17 @@ import time
 import logging
 class FrameProcessor():
     def __init__(self):
-        self.gpu_img=cv2.GpuMat()
+        self.gpu_img=cv2.cuda_GpuMat()
         self.logger=logging.getLogger(__name__)
-    def operate(self,frame,flip:bool=False,color:bool=False,send_to_cam:bool=False,cam:pyvirtualcam.Camera=None,width:int=None,height:int=None)->None:
+    def operate(self,
+                frame,
+                flip:bool=False,
+                color:bool=False,
+                download:bool=False,
+                send_to_cam:bool=False,
+                cam:pyvirtualcam.Camera=None,
+                width:int=None,
+                height:int=None)->None:
             if frame is None:
                 return None
             if isinstance(frame, np.ndarray):
@@ -22,10 +30,14 @@ class FrameProcessor():
             if flip:
                 self.gpu_img=self.flip_img(self.gpu_img)
             before_download=time.time()
-            img=self.gpu_img.download()
             self.logger.debug(f"Download took {time.time()-before_download} seconds")
             if send_to_cam:           
+                img=self.gpu_img.download()
                 cam.send(img)
+            if download:
+                img=self.gpu_img.download()
+            else:
+                img=self.gpu_img
             return img
     def resize(self,img,width:int,height:int):
         resized_gpu=cv2.cuda.resize(img, (width, height), interpolation=cv2.INTER_LINEAR)
