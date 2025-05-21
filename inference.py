@@ -3,7 +3,7 @@ from .src.config.argument_config import ArgumentConfig
 from .src.config.inference_config import InferenceConfig
 from .src.config.crop_config import CropConfig
 from .src.live_portrait_pipeline import LivePortraitPipeline
-from .src.crop import face_detector
+from .src.crop import SCRFD,face_detector
 from .src.utils.io import load_image_rgb
 from .src.cuda_functions import FrameProcessor
 import cv2
@@ -45,7 +45,7 @@ class Inference:
                             f"{os.path.dirname(self.script_dir)}/Backgrounds/meeting_green2.jpg"]
         self.running=False
         self.active=False
-        frame_path = os.path.join(self.script_dir, 'assets', 'frame.png')
+        self.face_detector_model=SCRFD(model_file=f"{os.path.dirname(os.path.abspath(__file__))}/pretrained_weights/insightface/models/buffalo_l/det_10g.onnx")
         self.background_image=None
         self.background_image_path=None
         self.green_screen=None
@@ -129,7 +129,7 @@ class Inference:
                         color=False,
                         send_to_cam=True)
                 face_time=time.time()
-                is_face = face_detector(frame)
+                is_face = face_detector(frame,self.face_detector_model)
                 self.logger(f"Face detector took {time.time()-face_time}")
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
