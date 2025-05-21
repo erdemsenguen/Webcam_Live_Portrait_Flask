@@ -146,14 +146,12 @@ class Inference:
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image_path:
-            background_time=time.time()
             background=self.cuda_cv2.operate(frame=self.background_image,
                                width=self.virtual_cam_res_x,
                                height=self.virtual_cam_res_y,
                                color=True)
             out=self.background_blur(pad,background)
-            if self.green_screen:
-                moni=time.time()
+            if self.green_screen and self.green_img is not None:
                 out=self.overlay_on_monitor(self.green_img,out)
             self.cuda_cv2.operate(cam=cam,
                     frame=out,
@@ -162,7 +160,6 @@ class Inference:
                     flip=False,
                     color=False,
                     send_to_cam=True)
-            self.logger.debug(f"Manipulation with background took {time.time()-mani} seconds!")
         else:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
