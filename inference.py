@@ -75,8 +75,8 @@ class Inference:
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-        with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=24, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=self.virtual_cam_res_x//2, height=self.virtual_cam_res_y//2, fps=24, backend='v4l2loopback', device='/dev/video11') as cam2:
+        with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
+             pyvirtualcam.Camera(width=self.virtual_cam_res_x//2, height=self.virtual_cam_res_y//2, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
             black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
             while True:
                 if not self.running:
