@@ -52,11 +52,7 @@ class Inference:
         self.previous_green_screen=None
         self.change_green_screen=False
         self.backend=None
-        self.log_counter_face_start=0
-        self.log_counter_face_success=0
-        self.log_counter_cam_dupe=0
-        self.log_counter_cam_dupe_success=0
-        self.log_counter_face_not_found=0
+
         self.x_s=None
         self.f_s=None
         self.R_s=None
@@ -64,8 +60,8 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.virtual_cam_res_x=960
-        self.virtual_cam_res_y=540
+        self.virtual_cam_res_x=800
+        self.virtual_cam_res_y=450
         self.cuda_cv2=FrameProcessor()
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
@@ -112,6 +108,7 @@ class Inference:
                               color=True,
                               send_to_cam=False,
                               )
+                self.logger.debug(f"Initial frame reading and refinement took{time.time()-loop_start}")
                 face_time=time.time()
                 is_face = face_detector(self.cuda_cv2.operate(cam=None,
                               frame=frame,
@@ -121,31 +118,28 @@ class Inference:
                 self.logger.debug(f"Face detector took {time.time()-face_time}")
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
+                    im_time=time.time()
                     self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = self.live_portrait_pipeline.execute_frame(frame, self.source_image_path)
+                    self.logger.debug(f"Source image set took {time.time()-im_time} seconds")
                     self.first_iter=False
                 if is_face: 
-                    if self.log_counter_face_start==0:
-                            self.logger.debug("Face found.")
-                            self.log_counter_face_start+=1
-                            self.log_counter_face_not_found=0
                     if self.source_image_path:
+                        mani_time=time.time()
                         self.manipulation(cam=cam,frame=frame)
+                        self.logger.debug(f"Manipulation Took{time.time()-mani_time}")
                     else:
-                        self.log_counter_face_success=0
+                        no_mani_time=time.time()
                         self.no_manipulation(cam=cam,frame=frame)
+                        self.logger.debug(f"No manipulation Took{time.time()-no_mani_time}")
                 else:
+                    no_mani_time=time.time()
                     self.no_manipulation(cam=cam,frame=frame)
-                    if self.log_counter_face_not_found==0:
-                        self.logger.debug("Face not found.")
-                        self.log_counter_face_not_found+=1
-                    self.log_counter_face_start=0
+                    self.logger.debug(f"No manipulation Took{time.time()-no_mani_time}")
+
                 self.logger.debug(f"A loop took {time.time()-loop_start} seconds!")
             cap.release()
     def manipulation(self,cam,frame):
-        self.logger.debug("Manipulation starts!")
         mani=time.time()
-        self.log_counter_cam_dupe=0
-        self.log_counter_cam_dupe_success=0
         self.active=True
         result = self.live_portrait_pipeline.generate_frame(self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb, frame)
         self.logger.debug(f"The model has generated the image in {time.time()-mani} seconds!")
@@ -159,19 +153,15 @@ class Inference:
         pad=self.pad.copy()
         pad[y_offset:y_offset+result_height,x_offset:x_offset+result_width]=result
         if self.background_image_path:
-            self.logger.debug("Background starts!")
             background_time=time.time()
             background=self.cuda_cv2.operate(frame=self.background_image,
                                width=self.virtual_cam_res_x,
                                height=self.virtual_cam_res_y,
                                color=True)
             out=self.background_blur(pad,background)
-            self.logger.debug(f"Background took {time.time()-background_time} seconds!")
             if self.green_screen:
-                self.logger.debug(f"Monitor overlay starts!")
                 moni=time.time()
                 out=self.overlay_on_monitor(self.green_img,out)
-                self.logger.debug(f"Monitor took {time.time()-moni} seconds")
             self.cuda_cv2.operate(cam=cam,
                     frame=out,
                     width=self.virtual_cam_res_x,
@@ -179,13 +169,10 @@ class Inference:
                     flip=False,
                     color=False,
                     send_to_cam=True)
-            self.logger.debug(f"Manipulation with background and with monitor projection took {time.time()-mani} seconds!")
+            self.logger.debug(f"Manipulation with background took {time.time()-mani} seconds!")
         else:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
-        if self.log_counter_face_success==0:
-            self.logger.debug("Face control established.")
-            self.log_counter_face_success+=1
     def overlay_on_monitor(self,background_img, overlay_img):
         def order_points(pts):
             rect = np.zeros((4, 2), dtype="float32")
@@ -216,14 +203,12 @@ class Inference:
             mask = cv2.inRange(hsv, lower_green, upper_green)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if not contours:
-                print("No green screen found.")
                 return background_img            
             largest_contour = max(contours, key=cv2.contourArea)
             epsilon = 0.02 * cv2.arcLength(largest_contour, True)
             approx = cv2.approxPolyDP(largest_contour, epsilon, True)
 
             if len(approx) != 4:
-                print("Monitor contour not detected as a quadrilateral.")
                 x, y, w, h = cv2.boundingRect(largest_contour)
                 dst_pts = np.array([
                         [x, y],
@@ -261,14 +246,9 @@ class Inference:
         self.logger.debug("No manipulation starts.")
         no_mani=time.time()
         self.x_s, self.f_s, self.R_s, self.x_s_info, self.lip_delta_before_animation, self.crop_info, self.img_rgb = None, None, None, None, None, None, None
-        if self.log_counter_cam_dupe==0:
-            self.log_counter_cam_dupe+=1
         self.active=False
         self.source_image_path=None
         self.first_iter=True
-        if self.log_counter_cam_dupe_success==0:
-            self.logger.debug("Duplicated camera feed is succesful.")
-            self.log_counter_cam_dupe_success+=1
         self.cuda_cv2.operate(cam=cam,
                     frame=frame,
                     width=self.virtual_cam_res_x,
