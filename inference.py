@@ -76,8 +76,7 @@ class Inference:
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
     def main(self):
-        with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, \
-             pyvirtualcam.Camera(width=self.virtual_cam_res_x//2, height=self.virtual_cam_res_y//2, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2:
+        with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=30, backend='v4l2loopback', device='/dev/video10') as cam, """pyvirtualcam.Camera(width=self.virtual_cam_res_x//2, height=self.virtual_cam_res_y//2, fps=30, backend='v4l2loopback', device='/dev/video11') as cam2: """
             black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
             while True:
                 if not self.running:
@@ -85,14 +84,6 @@ class Inference:
                             frame=black_image,
                             width=self.virtual_cam_res_x,
                             height=self.virtual_cam_res_y,
-                            flip=False,
-                            color=False,
-                            send_to_cam=True
-                            )
-                    self.cuda_cv2.operate(cam=cam2,
-                            frame=black_image,
-                            width=self.virtual_cam_res_x//2,
-                            height=self.virtual_cam_res_y//2,
                             flip=False,
                             color=False,
                             send_to_cam=True
@@ -121,15 +112,12 @@ class Inference:
                               color=True,
                               send_to_cam=False,
                               )
-                self.cuda_cv2.operate(cam=cam2,
-                        frame=frame,
-                        width=self.virtual_cam_res_x//2,
-                        height=self.virtual_cam_res_y//2,
-                        flip=False,
-                        color=False,
-                        send_to_cam=True)
                 face_time=time.time()
-                is_face = face_detector(frame,self.face_detector_model)
+                is_face = face_detector(self.cuda_cv2.operate(cam=None,
+                              frame=frame,
+                              width=160,
+                              height=160),
+                              self.face_detector_model)
                 self.logger.debug(f"Face detector took {time.time()-face_time}")
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
