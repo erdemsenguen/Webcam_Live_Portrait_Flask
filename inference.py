@@ -26,6 +26,9 @@ class Inference:
         tyro.extras.set_accent_color("bright_cyan")
         self.args = tyro.cli(ArgumentConfig)
         self.logger=logging.getLogger(__name__)
+        self.cap = WebcamStream()
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH,800)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,450)
         self.is_face= None
         self.first_iter=True
         # specify configs for inference
@@ -89,18 +92,17 @@ class Inference:
                 else:
                     black_image=None
                     break
-            cap = WebcamStream()
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT,760)
-            ret, frame = cap.read()
+            
+
+            ret, frame = self.cap.read()
             if not ret:
                 self.logger.debug("No camera input found.")
                 return
             while True:
                 loop_start=time.time()
-                ret, frame = cap.read()
+                ret, frame = self.cap.read()
                 if not ret:
-                    break
+                    continue
                 frame=self.cuda_cv2.operate(cam=None,
                               frame=frame,
                               width=self.virtual_cam_res_x,
@@ -136,9 +138,7 @@ class Inference:
                     no_mani_time=time.time()
                     self.no_manipulation(cam=cam,frame=frame)
                     self.logger.debug(f"No manipulation Took{time.time()-no_mani_time}")
-
                 self.logger.debug(f"A loop took {time.time()-loop_start} seconds!")
-            cap.release()
     def manipulation(self,cam,frame):
         mani=time.time()
         self.active=True
