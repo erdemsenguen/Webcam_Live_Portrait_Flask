@@ -26,7 +26,9 @@ class Inference:
         tyro.extras.set_accent_color("bright_cyan")
         self.args = tyro.cli(ArgumentConfig)
         self.logger=logging.getLogger(__name__)
-        self.cap = WebcamStream()
+        self.virtual_cam_res_x=1920
+        self.virtual_cam_res_y=1080
+        self.cap = WebcamStream(width=self.virtual_cam_res_x,height=self.virtual_cam_res_y)
         self.is_face= None
         self.first_iter=True
         # specify configs for inference
@@ -54,7 +56,6 @@ class Inference:
         self.previous_green_screen=None
         self.change_green_screen=False
         self.backend=None
-
         self.x_s=None
         self.f_s=None
         self.R_s=None
@@ -62,8 +63,6 @@ class Inference:
         self.lip_delta_before_animation=None
         self.crop_info=None
         self.img_rgb=None
-        self.virtual_cam_res_x=960
-        self.virtual_cam_res_y=540
         self.cuda_cv2=FrameProcessor()
         self.green_img=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
@@ -72,7 +71,6 @@ class Inference:
         self.conf_virt_live_webcam()
     def partial_fields(self,target_class, kwargs):
         return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
-
     def main(self):
         with pyvirtualcam.Camera(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, fps=30, backend='v4l2loopback', device='/dev/video10') as cam:
             black_image = np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
@@ -275,7 +273,7 @@ class Inference:
                            width=shape[1], 
                            height=shape[0])
             pred = np.clip(pred, 0, 1)
-            pred= np.power(pred, 0.8) # threshold may be lowered
+            pred= np.power(pred, 0.8) 
             return pred
 
     def conf_virt_live_webcam(self):
@@ -286,25 +284,14 @@ class Inference:
         else:
             self.backend = "unknown"
     def set_source(self,source_img_path:str):
-        self.first_iter=True
         if source_img_path==self.source_image_path:
-            if source_img_path.endswith("7.jpg") or source_img_path.endswith("11.jpg"):
-                pass
-            else:
-                self.green_screen=random.choice(self.green_screens)
-                if self.green_screen!=self.previous_green_screen:
-                    self.change_green_screen=True
-                    self.green_img=cv2.imread(self.green_screen)
-                    if self.green_screen and self.green_img is not None:
-                        self.green_img=self.cuda_cv2.operate(frame=self.green_img,
-                                            width=self.virtual_cam_res_x,
-                                            height=self.virtual_cam_res_y,
-                                            color=True,
-                                            )
+            pass               
         else:
-            self.change_green_screen=False
-            self.green_screen=None
+            self.first_iter=True
             try:
+                self.green_screen=None
+                self.previous_green_screen=None
+                self.change_green_screen=True
                 load_image_rgb(source_img_path)
                 self.source_image_path=source_img_path
                 self.logger.debug("Image set successfully!")
@@ -321,6 +308,20 @@ class Inference:
             except Exception as e:
                 self.source_image_path=None
                 return e
+    def set_greenscreen(self,green_screen_path:str):
+        self.green_screen=green_screen_path
+        if self.green_screen!=self.previous_green_screen:
+            self.change_green_screen=True
+            self.green_img=cv2.imread(self.green_screen)
+            if self.green_screen and self.green_img is not None:
+                self.green_img=self.cuda_cv2.operate(frame=self.green_img,
+                                    width=self.virtual_cam_res_x,
+                                    height=self.virtual_cam_res_y,
+                                    color=True,
+                                    )
+        else:
+            self.change_green_screen=False
+            self.green_screen=None
     def set_parameters(self,**kwargs):
         self.live_portrait_pipeline.update_values(kwargs)
     def status_funct(self):
