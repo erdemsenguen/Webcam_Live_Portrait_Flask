@@ -313,13 +313,13 @@ class Inference:
         if self.green_screen!=self.previous_green_screen:
             self.change_green_screen=True
             self.green_img=cv2.imread(self.green_screen)
-            self.green_screen_change(self.green_img)
             if self.green_screen and self.green_img is not None:
                 self.green_img=self.cuda_cv2.operate(frame=self.green_img,
                                     width=self.virtual_cam_res_x,
                                     height=self.virtual_cam_res_y,
                                     color=True,
                                     )
+            self.green_screen_change(self.green_img)
         else:
             self.change_green_screen=False
             self.green_screen=None
