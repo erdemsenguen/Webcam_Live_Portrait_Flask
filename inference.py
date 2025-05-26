@@ -163,7 +163,7 @@ class Inference:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
     def overlay_on_monitor(self,background_img, overlay_img):
-        if self.dst_pts:
+        if self.dst_pts is not None:
             h, w = overlay_img.shape[:2]
             src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
