@@ -100,7 +100,7 @@ class APIServer:
                     inp=str(j_input)
                     if inp in self.green_names:
                         try:
-                            self.green_funct(inp)
+                            self.green_funct(f"{self.source_green_dir}/{inp}.jpg")
                         except Exception as e:
                             print(e)
                             return jsonify({"error": f"Software exception occured \n{e}"}),404
