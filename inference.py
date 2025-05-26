@@ -162,6 +162,27 @@ class Inference:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
     def overlay_on_monitor(self,background_img, overlay_img):
+        h, w = overlay_img.shape[:2]
+        src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
+
+        M = cv2.getPerspectiveTransform(src_pts, self.dst_pts)
+        warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
+
+        # Mask out green screen
+        mask_warp = cv2.warpPerspective(np.ones_like(overlay_img, dtype=np.uint8)*255, M, (background_img.shape[1], background_img.shape[0]))
+        mask_gray = cv2.cvtColor(mask_warp, cv2.COLOR_BGR2GRAY)
+        mask_inv = cv2.bitwise_not(mask_gray)
+
+        bg_masked = cv2.bitwise_and(background_img, background_img, mask=mask_inv)
+        fg_masked = cv2.bitwise_and(warped_overlay, warped_overlay, mask=mask_gray)
+
+        # Combine background and foreground
+        combined = cv2.add(bg_masked, fg_masked)
+        combined = self.cuda_cv2.operate(frame=combined,
+                          width=self.virtual_cam_res_x,
+                          height=self.virtual_cam_res_y)
+        return combined
+    def green_screen_change(self,background_img):
         def order_points(pts):
             rect = np.zeros((4, 2), dtype="float32")
             s = pts.sum(axis=1)
@@ -184,52 +205,31 @@ class Inference:
                     new_pt = np.array([x, y])
                 expanded.append(new_pt)
             return np.array(expanded, dtype="float32")
-        if self.change_green_screen:
-            hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)            
-            lower_green = np.array([50, 100, 100])
-            upper_green = np.array([95, 255, 255])            
-            mask = cv2.inRange(hsv, lower_green, upper_green)
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            if not contours:
-                return background_img            
-            largest_contour = max(contours, key=cv2.contourArea)
-            epsilon = 0.02 * cv2.arcLength(largest_contour, True)
-            approx = cv2.approxPolyDP(largest_contour, epsilon, True)
+        hsv = cv2.cvtColor(background_img, cv2.COLOR_BGR2HSV)            
+        lower_green = np.array([50, 100, 100])
+        upper_green = np.array([95, 255, 255])            
+        mask = cv2.inRange(hsv, lower_green, upper_green)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return background_img            
+        largest_contour = max(contours, key=cv2.contourArea)
+        epsilon = 0.02 * cv2.arcLength(largest_contour, True)
+        approx = cv2.approxPolyDP(largest_contour, epsilon, True)
 
-            if len(approx) != 4:
-                x, y, w, h = cv2.boundingRect(largest_contour)
-                dst_pts = np.array([
-                        [x, y],
-                        [x + w, y],
-                        [x + w, y + h],
-                        [x, y + h]
-                    ], dtype="float32")
-            else:
-                dst_pts = np.array([point[0] for point in approx], dtype="float32")
-            dst_pts = order_points(dst_pts)
-            self.dst_pts = expand_quad(dst_pts,2)
-            self.previous_green_screen=self.green_screen
-            self.change_green_screen=False
-        h, w = overlay_img.shape[:2]
-        src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
-
-        M = cv2.getPerspectiveTransform(src_pts, self.dst_pts)
-        warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
-
-        # Mask out green screen
-        mask_warp = cv2.warpPerspective(np.ones_like(overlay_img, dtype=np.uint8)*255, M, (background_img.shape[1], background_img.shape[0]))
-        mask_gray = cv2.cvtColor(mask_warp, cv2.COLOR_BGR2GRAY)
-        mask_inv = cv2.bitwise_not(mask_gray)
-
-        bg_masked = cv2.bitwise_and(background_img, background_img, mask=mask_inv)
-        fg_masked = cv2.bitwise_and(warped_overlay, warped_overlay, mask=mask_gray)
-
-        # Combine background and foreground
-        combined = cv2.add(bg_masked, fg_masked)
-        combined = self.cuda_cv2.operate(frame=combined,
-                          width=self.virtual_cam_res_x,
-                          height=self.virtual_cam_res_y)
-        return combined
+        if len(approx) != 4:
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            dst_pts = np.array([
+                    [x, y],
+                    [x + w, y],
+                    [x + w, y + h],
+                    [x, y + h]
+                ], dtype="float32")
+        else:
+            dst_pts = np.array([point[0] for point in approx], dtype="float32")
+        dst_pts = order_points(dst_pts)
+        self.dst_pts = expand_quad(dst_pts,5)
+        self.previous_green_screen=self.green_screen
+        self.change_green_screen=False
     def no_manipulation(self,cam,frame):
         self.logger.debug("No manipulation starts.")
         no_mani=time.time()
@@ -313,6 +313,7 @@ class Inference:
         if self.green_screen!=self.previous_green_screen:
             self.change_green_screen=True
             self.green_img=cv2.imread(self.green_screen)
+            self.green_screen_change(self.green_img)
             if self.green_screen and self.green_img is not None:
                 self.green_img=self.cuda_cv2.operate(frame=self.green_img,
                                     width=self.virtual_cam_res_x,
