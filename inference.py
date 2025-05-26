@@ -65,6 +65,7 @@ class Inference:
         self.img_rgb=None
         self.cuda_cv2=FrameProcessor()
         self.green_img=None
+        self.dst_pts=None
         self.session=ort.InferenceSession(f"{self.script_dir}/pretrained_weights/u2-segmentation/u2netp.onnx",
                                           providers=['CUDAExecutionProvider']) 
         self.pad=np.zeros((self.virtual_cam_res_y,self.virtual_cam_res_x, 3), dtype=np.uint8)
@@ -162,26 +163,29 @@ class Inference:
             cam.send(pad)
             self.logger.debug(f"Manipulation without background took {time.time()-mani} seconds!")
     def overlay_on_monitor(self,background_img, overlay_img):
-        h, w = overlay_img.shape[:2]
-        src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
+        if self.dst_pts:
+            h, w = overlay_img.shape[:2]
+            src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
 
-        M = cv2.getPerspectiveTransform(src_pts, self.dst_pts)
-        warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
+            M = cv2.getPerspectiveTransform(src_pts, self.dst_pts)
+            warped_overlay = cv2.warpPerspective(overlay_img, M, (background_img.shape[1], background_img.shape[0]))
 
-        # Mask out green screen
-        mask_warp = cv2.warpPerspective(np.ones_like(overlay_img, dtype=np.uint8)*255, M, (background_img.shape[1], background_img.shape[0]))
-        mask_gray = cv2.cvtColor(mask_warp, cv2.COLOR_BGR2GRAY)
-        mask_inv = cv2.bitwise_not(mask_gray)
+            # Mask out green screen
+            mask_warp = cv2.warpPerspective(np.ones_like(overlay_img, dtype=np.uint8)*255, M, (background_img.shape[1], background_img.shape[0]))
+            mask_gray = cv2.cvtColor(mask_warp, cv2.COLOR_BGR2GRAY)
+            mask_inv = cv2.bitwise_not(mask_gray)
 
-        bg_masked = cv2.bitwise_and(background_img, background_img, mask=mask_inv)
-        fg_masked = cv2.bitwise_and(warped_overlay, warped_overlay, mask=mask_gray)
+            bg_masked = cv2.bitwise_and(background_img, background_img, mask=mask_inv)
+            fg_masked = cv2.bitwise_and(warped_overlay, warped_overlay, mask=mask_gray)
 
-        # Combine background and foreground
-        combined = cv2.add(bg_masked, fg_masked)
-        combined = self.cuda_cv2.operate(frame=combined,
-                          width=self.virtual_cam_res_x,
-                          height=self.virtual_cam_res_y)
-        return combined
+            # Combine background and foreground
+            combined = cv2.add(bg_masked, fg_masked)
+            combined = self.cuda_cv2.operate(frame=combined,
+                            width=self.virtual_cam_res_x,
+                            height=self.virtual_cam_res_y)
+            return combined
+        else:
+            pass
     def green_screen_change(self,background_img):
         def order_points(pts):
             rect = np.zeros((4, 2), dtype="float32")
@@ -273,7 +277,6 @@ class Inference:
                            width=shape[1], 
                            height=shape[0])
             pred = np.clip(pred, 0, 1)
-            pred= np.power(pred, 0.8) 
             mask = (pred > 0.4).astype(np.float32)
             return mask
 
