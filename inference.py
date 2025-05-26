@@ -277,8 +277,7 @@ class Inference:
                            width=shape[1], 
                            height=shape[0])
             pred = np.clip(pred, 0, 1)
-            mask = (pred > 0.4).astype(np.float32)
-            return mask
+            return pred
 
     def conf_virt_live_webcam(self):
         if platform.system() == "Windows":
