@@ -101,9 +101,12 @@ class APIServer:
                     if inp in self.green_names:
                         try:
                             self.green_funct(f"{self.source_green_dir}/{inp}.jpg")
+                            return jsonify({"status": "success", "input": j_input})
                         except Exception as e:
                             print(e)
                             return jsonify({"error": f"Software exception occured \n{e}"}),404
+            else:
+                return jsonify({"error":"WTF"})
     def handle_increment(self,photo_id:int):
             data_file = "data.json"
             if not os.path.exists(data_file):
