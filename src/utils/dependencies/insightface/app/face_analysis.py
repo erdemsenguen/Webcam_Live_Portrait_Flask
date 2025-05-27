@@ -19,32 +19,40 @@ from ..utils import ensure_available
 from .common import Face
 
 
-DEFAULT_MP_NAME = 'buffalo_l'
-__all__ = ['FaceAnalysis']
+DEFAULT_MP_NAME = "buffalo_l"
+__all__ = ["FaceAnalysis"]
+
 
 class FaceAnalysis:
-    def __init__(self, name=DEFAULT_MP_NAME, root='~/.insightface', allowed_modules=None, **kwargs):
+    def __init__(
+        self,
+        name=DEFAULT_MP_NAME,
+        root="~/.insightface",
+        allowed_modules=None,
+        **kwargs
+    ):
         onnxruntime.set_default_logger_severity(3)
         self.models = {}
-        self.model_dir = ensure_available('models', name, root=root)
-        onnx_files = glob.glob(osp.join(self.model_dir, '*.onnx'))
+        self.model_dir = ensure_available("models", name, root=root)
+        onnx_files = glob.glob(osp.join(self.model_dir, "*.onnx"))
         onnx_files = sorted(onnx_files)
         for onnx_file in onnx_files:
             model = model_zoo.get_model(onnx_file, **kwargs)
             if model is None:
-                print('model not recognized:', onnx_file)
+                print("model not recognized:", onnx_file)
             elif allowed_modules is not None and model.taskname not in allowed_modules:
-                print('model ignore:', onnx_file, model.taskname)
+                print("model ignore:", onnx_file, model.taskname)
                 del model
-            elif model.taskname not in self.models and (allowed_modules is None or model.taskname in allowed_modules):
+            elif model.taskname not in self.models and (
+                allowed_modules is None or model.taskname in allowed_modules
+            ):
                 # print('find model:', onnx_file, model.taskname, model.input_shape, model.input_mean, model.input_std)
                 self.models[model.taskname] = model
             else:
-                print('duplicated model task type, ignore:', onnx_file, model.taskname)
+                print("duplicated model task type, ignore:", onnx_file, model.taskname)
                 del model
-        assert 'detection' in self.models
-        self.det_model = self.models['detection']
-
+        assert "detection" in self.models
+        self.det_model = self.models["detection"]
 
     def prepare(self, ctx_id, det_thresh=0.5, det_size=(640, 640)):
         self.det_thresh = det_thresh
@@ -52,15 +60,13 @@ class FaceAnalysis:
         # print('set det-size:', det_size)
         self.det_size = det_size
         for taskname, model in self.models.items():
-            if taskname=='detection':
+            if taskname == "detection":
                 model.prepare(ctx_id, input_size=det_size, det_thresh=det_thresh)
             else:
                 model.prepare(ctx_id)
 
     def get(self, img, max_num=0):
-        bboxes, kpss = self.det_model.detect(img,
-                                             max_num=max_num,
-                                             metric='default')
+        bboxes, kpss = self.det_model.detect(img, max_num=max_num, metric="default")
         if bboxes.shape[0] == 0:
             return []
         ret = []
@@ -72,7 +78,7 @@ class FaceAnalysis:
                 kps = kpss[i]
             face = Face(bbox=bbox, kps=kps, det_score=det_score)
             for taskname, model in self.models.items():
-                if taskname=='detection':
+                if taskname == "detection":
                     continue
                 model.get(img, face)
             ret.append(face)
@@ -80,6 +86,7 @@ class FaceAnalysis:
 
     def draw_on(self, img, faces):
         import cv2
+
         dimg = img.copy()
         for i in range(len(faces)):
             face = faces[i]
@@ -88,17 +95,24 @@ class FaceAnalysis:
             cv2.rectangle(dimg, (box[0], box[1]), (box[2], box[3]), color, 2)
             if face.kps is not None:
                 kps = face.kps.astype(np.int)
-                #print(landmark.shape)
+                # print(landmark.shape)
                 for l in range(kps.shape[0]):
                     color = (0, 0, 255)
                     if l == 0 or l == 3:
                         color = (0, 255, 0)
-                    cv2.circle(dimg, (kps[l][0], kps[l][1]), 1, color,
-                               2)
+                    cv2.circle(dimg, (kps[l][0], kps[l][1]), 1, color, 2)
             if face.gender is not None and face.age is not None:
-                cv2.putText(dimg,'%s,%d'%(face.sex,face.age), (box[0]-1, box[1]-4),cv2.FONT_HERSHEY_COMPLEX,0.7,(0,255,0),1)
+                cv2.putText(
+                    dimg,
+                    "%s,%d" % (face.sex, face.age),
+                    (box[0] - 1, box[1] - 4),
+                    cv2.FONT_HERSHEY_COMPLEX,
+                    0.7,
+                    (0, 255, 0),
+                    1,
+                )
 
-            #for key, value in face.items():
+            # for key, value in face.items():
             #    if key.startswith('landmark_3d'):
             #        print(key, value.shape)
             #        print(value[0:10,:])

@@ -21,17 +21,20 @@ def main():
     args = tyro.cli(ArgumentConfig)
 
     # specify configs for inference
-    inference_cfg = partial_fields(InferenceConfig, args.__dict__)  # use attribute of args to initial InferenceConfig
-    crop_cfg = partial_fields(CropConfig, args.__dict__)  # use attribute of args to initial CropConfig
+    inference_cfg = partial_fields(
+        InferenceConfig, args.__dict__
+    )  # use attribute of args to initial InferenceConfig
+    crop_cfg = partial_fields(
+        CropConfig, args.__dict__
+    )  # use attribute of args to initial CropConfig
 
-    video_template_maker = TemplateMaker(
-        inference_cfg=inference_cfg,
-        crop_cfg=crop_cfg
-    )
+    video_template_maker = TemplateMaker(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
 
     # run
-    video_template_maker.make_motion_template(args.driving_video_path, args.template_output_dir)
+    video_template_maker.make_motion_template(
+        args.driving_video_path, args.template_output_dir
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

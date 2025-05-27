@@ -5,7 +5,7 @@ torchaudio==2.3.0
 
 numpy==1.26.4
 pyyaml==6.0.1
-opencv-python==4.10.0.84
+https://github.com/cudawarped/opencv-python-cuda-wheels/releases/download/4.6.0.20221107/opencv_contrib_python_rolling-4.6.0.20221107-cp36-abi3-win_amd64.whl
 scipy==1.13.1
 imageio==2.34.2
 lmdb==1.4.1
@@ -20,3 +20,10 @@ matplotlib==3.9.0
 imageio-ffmpeg==0.5.1
 tyro==0.8.5
 gradio==4.37.1
+pygrabber==0.2
+pyvirtualcam==0.12.1
+flask>=3.1.0
+requests>=2.32.3
+jsonpickle>=3.0.4
+flask-cors>=5.0.1
+mediapipe>=0.10.21

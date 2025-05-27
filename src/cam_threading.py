@@ -2,6 +2,7 @@ import cv2
 import threading
 import logging
 
+
 class WebcamStream:
     def __init__(self, src=0, width=1280, height=720):
         self.logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ class WebcamStream:
             raise RuntimeError(f"Unable to open video source {src}")
 
         # Set resolution
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 

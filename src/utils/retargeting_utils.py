@@ -1,4 +1,3 @@
-
 """
 Functions to compute distance ratios between specific pairs of facial landmarks
 """
@@ -6,7 +5,9 @@ Functions to compute distance ratios between specific pairs of facial landmarks
 import numpy as np
 
 
-def calculate_distance_ratio(lmk: np.ndarray, idx1: int, idx2: int, idx3: int, idx4: int, eps: float = 1e-6) -> np.ndarray:
+def calculate_distance_ratio(
+    lmk: np.ndarray, idx1: int, idx2: int, idx3: int, idx4: int, eps: float = 1e-6
+) -> np.ndarray:
     """
     Calculate the ratio of the distance between two pairs of landmarks.
 
@@ -18,11 +19,14 @@ def calculate_distance_ratio(lmk: np.ndarray, idx1: int, idx2: int, idx3: int, i
     Returns:
     np.ndarray: Calculated distance ratio.
     """
-    return (np.linalg.norm(lmk[:, idx1] - lmk[:, idx2], axis=1, keepdims=True) /
-            (np.linalg.norm(lmk[:, idx3] - lmk[:, idx4], axis=1, keepdims=True) + eps))
+    return np.linalg.norm(lmk[:, idx1] - lmk[:, idx2], axis=1, keepdims=True) / (
+        np.linalg.norm(lmk[:, idx3] - lmk[:, idx4], axis=1, keepdims=True) + eps
+    )
 
 
-def calc_eye_close_ratio(lmk: np.ndarray, target_eye_ratio: np.ndarray = None) -> np.ndarray:
+def calc_eye_close_ratio(
+    lmk: np.ndarray, target_eye_ratio: np.ndarray = None
+) -> np.ndarray:
     """
     Calculate the eye-close ratio for left and right eyes.
 
@@ -36,7 +40,9 @@ def calc_eye_close_ratio(lmk: np.ndarray, target_eye_ratio: np.ndarray = None) -
     lefteye_close_ratio = calculate_distance_ratio(lmk, 6, 18, 0, 12)
     righteye_close_ratio = calculate_distance_ratio(lmk, 30, 42, 24, 36)
     if target_eye_ratio is not None:
-        return np.concatenate([lefteye_close_ratio, righteye_close_ratio, target_eye_ratio], axis=1)
+        return np.concatenate(
+            [lefteye_close_ratio, righteye_close_ratio, target_eye_ratio], axis=1
+        )
     else:
         return np.concatenate([lefteye_close_ratio, righteye_close_ratio], axis=1)
 

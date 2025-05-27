@@ -5,7 +5,10 @@ from glob import glob
 import os.path as osp
 import imageio
 import numpy as np
-import cv2; cv2.setNumThreads(0); cv2.ocl.setUseOpenCL(False)
+import cv2
+
+cv2.setNumThreads(0)
+cv2.ocl.setUseOpenCL(False)
 
 
 def load_image_rgb(image_path: str):
@@ -19,7 +22,9 @@ def load_driving_info(driving_info):
     driving_video_ori = []
 
     def load_images_from_directory(directory):
-        image_paths = sorted(glob(osp.join(directory, '*.png')) + glob(osp.join(directory, '*.jpg')))
+        image_paths = sorted(
+            glob(osp.join(directory, "*.png")) + glob(osp.join(directory, "*.jpg"))
+        )
         return [load_image_rgb(im_path) for im_path in image_paths]
 
     def load_images_from_video(file_path):

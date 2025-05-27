@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import onnxruntime
 
+
 # from utils.helpers import distance2bbox, distance2kps
 def distance2bbox(points, distance, max_shape=None):
     x1 = points[:, 0] - distance[:, 0]
@@ -16,11 +17,12 @@ def distance2bbox(points, distance, max_shape=None):
         y2 = np.clip(y2, 0, max_shape[0])
     return np.stack([x1, y1, x2, y2], axis=-1)
 
+
 def distance2kps(points, distance, max_shape=None):
     preds = []
     for i in range(0, distance.shape[1], 2):
-        px = points[:, i%2] + distance[:, i]
-        py = points[:, i%2+1] + distance[:, i+1]
+        px = points[:, i % 2] + distance[:, i]
+        py = points[:, i % 2 + 1] + distance[:, i + 1]
         if max_shape is not None:
             px = np.clip(px, 0, max_shape[1])
             py = np.clip(py, 0, max_shape[0])
@@ -47,7 +49,7 @@ class SCRFD:
             self.session = onnxruntime.InferenceSession(
                 self.model_file,
                 providers=["CUDAExecutionProvider"],
-            )    # "CUDAExecutionProvider", 
+            )  # "CUDAExecutionProvider",
 
         self.center_cache = {}
         self.nms_thresh = 0.4
@@ -113,7 +115,7 @@ class SCRFD:
             1.0 / self.std,
             input_size,
             (self.mean, self.mean, self.mean),
-            swapRB=True
+            swapRB=True,
         )
         outputs = self.session.run(self.output_names, {self.input_name: blob})
 
@@ -141,10 +143,14 @@ class SCRFD:
             if key in self.center_cache:
                 anchor_centers = self.center_cache[key]
             else:
-                anchor_centers = np.stack(np.mgrid[:height, :width][::-1], axis=-1).astype(np.float32)
+                anchor_centers = np.stack(
+                    np.mgrid[:height, :width][::-1], axis=-1
+                ).astype(np.float32)
                 anchor_centers = (anchor_centers * stride).reshape((-1, 2))
                 if self._num_anchors > 1:
-                    anchor_centers = np.stack([anchor_centers] * self._num_anchors, axis=1).reshape((-1, 2))
+                    anchor_centers = np.stack(
+                        [anchor_centers] * self._num_anchors, axis=1
+                    ).reshape((-1, 2))
                 if len(self.center_cache) < 100:
                     self.center_cache[key] = anchor_centers
 
@@ -212,7 +218,9 @@ class SCRFD:
             if metric == "max":
                 values = area
             else:
-                values = (area - offset_dist_squared * 2.0)  # some extra weight on the centering
+                values = (
+                    area - offset_dist_squared * 2.0
+                )  # some extra weight on the centering
             bindex = np.argsort(values)[::-1]  # some extra weight on the centering
             bindex = bindex[0:max_num]
             det = det[bindex, :]
@@ -248,16 +256,22 @@ class SCRFD:
             order = order[indices + 1]
 
         return keep
-def face_detector(frame,detector):    
+
+
+def face_detector(frame, detector):
     boxes, _ = detector.detect(frame, input_size=(160, 160), max_num=1)
     if len(boxes) == 0:
         return False
     else:
         return True
+
+
 def monitor_crop(frame):
-    detector = SCRFD(model_file=f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/pretrained_weights/insightface/models/buffalo_l/det_10g.onnx")    
+    detector = SCRFD(
+        model_file=f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/pretrained_weights/insightface/models/buffalo_l/det_10g.onnx"
+    )
     boxes, _ = detector.detect(frame, input_size=(640, 640), max_num=1)
-    if len(boxes) ==0:
+    if len(boxes) == 0:
         return None
 
     # for boxes in boxes_list:
@@ -272,5 +286,4 @@ def monitor_crop(frame):
     face = frame[y1:y2, x1:x2]
     # face_resized = cv2.resize(face, (512, 512))
 
-    
     return face

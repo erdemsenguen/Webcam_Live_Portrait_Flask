@@ -1,15 +1,17 @@
 """
 This code file mainly comes from https://github.com/dmlc/gluon-cv/blob/master/gluoncv/utils/filesystem.py
 """
+
 import os
 import os.path as osp
 import errno
 
 
-def get_model_dir(name, root='~/.insightface'):
+def get_model_dir(name, root="~/.insightface"):
     root = os.path.expanduser(root)
-    model_dir = osp.join(root, 'models', name)
+    model_dir = osp.join(root, "models", name)
     return model_dir
+
 
 def makedirs(path):
     """Create directory recursively if not exists.
@@ -62,7 +64,7 @@ def try_import_cv2():
     msg = "cv2 is required, you can install by package manager, e.g. 'apt-get', \
         or `pip install opencv-python --user` (note that this is unofficial PYPI package)."
 
-    return try_import('cv2', msg)
+    return try_import("cv2", msg)
 
 
 def try_import_mmcv():
@@ -76,7 +78,7 @@ def try_import_mmcv():
     msg = "mmcv is required, you can install by first `pip install Cython --user` \
         and then `pip install mmcv --user` (note that this is unofficial PYPI package)."
 
-    return try_import('mmcv', msg)
+    return try_import("mmcv", msg)
 
 
 def try_import_rarfile():
@@ -90,7 +92,7 @@ def try_import_rarfile():
     msg = "rarfile is required, you can install by first `sudo apt-get install unrar` \
         and then `pip install rarfile --user` (note that this is unofficial PYPI package)."
 
-    return try_import('rarfile', msg)
+    return try_import("rarfile", msg)
 
 
 def import_try_install(package, extern_url=None):
@@ -123,8 +125,7 @@ def import_try_install(package, extern_url=None):
 
         # trying to install package
         url = package if extern_url is None else extern_url
-        pipmain(['install', '--user',
-                 url])  # will raise SystemExit Error if fails
+        pipmain(["install", "--user", url])  # will raise SystemExit Error if fails
 
         # trying to load again
         try:
@@ -132,6 +133,7 @@ def import_try_install(package, extern_url=None):
         except ImportError:
             import sys
             import site
+
             user_site = site.getusersitepackages()
             if user_site not in sys.path:
                 sys.path.append(user_site)
@@ -140,10 +142,9 @@ def import_try_install(package, extern_url=None):
 
 
 def try_import_dali():
-    """Try import NVIDIA DALI at runtime.
-    """
+    """Try import NVIDIA DALI at runtime."""
     try:
-        dali = __import__('nvidia.dali', fromlist=['pipeline', 'ops', 'types'])
+        dali = __import__("nvidia.dali", fromlist=["pipeline", "ops", "types"])
         dali.Pipeline = dali.pipeline.Pipeline
     except ImportError:
 
