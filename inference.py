@@ -83,6 +83,7 @@ class Inference:
             f"{self.script_dir}/pretrained_weights/modnet/modnet_photographic_portrait_matting.onnx",
             providers=["CUDAExecutionProvider"],
         )
+        self.logger.debug([i.name for i in self.session.get_inputs()])
         self.pad = np.zeros(
             (self.virtual_cam_res_y, self.virtual_cam_res_x, 3), dtype=np.uint8
         )
@@ -417,9 +418,8 @@ class Inference:
                     self.background_image = None
                 else:
                     self.background_image_path = random.choice(self.background_images)
-                    self.background_image = cv2.imread(self.background_image_path)
                     self.background_image = self.cuda_cv2.operate(
-                        frame=self.background_image,
+                        frame=cv2.imread(self.background_image_path),
                         width=self.virtual_cam_res_x,
                         height=self.virtual_cam_res_y,
                         color=True,
