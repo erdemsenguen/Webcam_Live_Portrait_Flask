@@ -381,11 +381,11 @@ class Inference:
     def temp_source_setter(self):
         if self.temp_source != self.source_image_path and self.temp_source is not None:
             self.first_iter = True
+            self.source_image_path=self.temp_source
             try:
                 self.green_screen = None
                 self.previous_green_screen = None
                 self.change_green_screen = True
-                self.source_image_path = self.temp_source
                 load_image_rgb(self.source_image_path)
                 self.logger.debug("Image set successfully!")
                 if self.source_img_path.endswith(
@@ -402,6 +402,7 @@ class Inference:
                     )
                 return "Image set successfully."
             except Exception as e:
+                self.logger.error(e)
                 self.source_image_path = None
                 return e
 
