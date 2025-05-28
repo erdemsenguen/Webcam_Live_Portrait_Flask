@@ -379,19 +379,19 @@ class Inference:
             self.backend = "unknown"
 
     def temp_source_setter(self):
-        if self.temp_source != self.source_image_path:
+        if self.temp_source != self.source_image_path and self.temp_source is not None:
             self.first_iter = True
             try:
                 self.green_screen = None
                 self.previous_green_screen = None
                 self.change_green_screen = True
-                load_image_rgb(self.temp_source)
                 self.source_image_path = self.temp_source
+                load_image_rgb(self.source_image_path)
                 self.logger.debug("Image set successfully!")
                 if self.source_img_path.endswith(
                     "7.jpg"
                 ) or self.source_img_path.endswith("11.jpg"):
-                    self.temp_background = None
+                    self.background_image = None
                 else:
                     self.background_image_path = random.choice(self.background_images)
                     self.background_image = cv2.imread(self.background_image_path)
