@@ -192,11 +192,19 @@ class Inference:
             self.img_rgb,
             frame,
         )
-        if result is None:
-            self.logger.error("generate_frame() returned None")
+        if result is None or self.img_rgb is None:
+            self.logger.debug("Execute frame is not ready yet, skipping frames.")
+            self.cuda_cv2.operate(
+                cam=cam,
+                frame=frame,
+                width=self.virtual_cam_res_x,
+                height=self.virtual_cam_res_y,
+                flip=False,
+                color=False,
+                send_to_cam=True,
+            )
             return
         else:
-            self.logger.debug(result.shape)
             self.logger.debug(
                 f"The model has generated the image in {time.time()-mani} seconds!"
             )
@@ -207,15 +215,17 @@ class Inference:
             ):
                 result = self.cuda_cv2.operate(
                     frame=result,
-                    width=self.virtual_cam_res_x*self.virtual_cam_res_y//result_height,
+                    width=self.virtual_cam_res_x
+                    * self.virtual_cam_res_y
+                    // result_height,
                     height=self.virtual_cam_res_y,
                 )
             x_offset = (self.virtual_cam_res_x - result_width) // 2
             y_offset = self.virtual_cam_res_y - result_height
             pad = self.pad.copy()
-            pad[y_offset : y_offset + result_height, x_offset : x_offset + result_width] = (
-                result
-            )
+            pad[
+                y_offset : y_offset + result_height, x_offset : x_offset + result_width
+            ] = result
             if self.background_image is not None:
                 background = self.background_image
                 out = self.background_blur(pad, background)
@@ -354,7 +364,9 @@ class Inference:
         input_blob = self.preprocess(frame)
         result = self.session.run(None, {"input": input_blob})[0]
         mask = self.postprocess(result, frame.shape[:2])
-        self.logger.debug(f"[MASK] min={mask.min()}, max={mask.max()}, shape={mask.shape}")
+        self.logger.debug(
+            f"[MASK] min={mask.min()}, max={mask.max()}, shape={mask.shape}"
+        )
         fg = frame.astype(np.float32) / 255.0
         bg = background_img.astype(np.float32) / 255.0
         composite = fg * mask + bg * (1 - mask)
@@ -390,9 +402,9 @@ class Inference:
     def temp_source_setter(self):
         if self.temp_source != self.source_image_path and self.temp_source is not None:
             self.first_iter = True
-            self.source_image_path=self.temp_source
-            self.background_image=None
-            self.temp_source=None
+            self.source_image_path = self.temp_source
+            self.background_image = None
+            self.temp_source = None
             try:
                 self.temp_green = None
                 self.green_screen = None
@@ -417,6 +429,7 @@ class Inference:
                 self.logger.error(e)
                 self.source_image_path = None
                 return e
+
     def set_source(self, source_img_path: str):
         if source_img_path == self.source_image_path:
             pass
