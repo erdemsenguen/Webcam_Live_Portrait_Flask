@@ -195,6 +195,7 @@ class Inference:
         if result is None:
             self.logger.error("generate_frame() returned None")
             return
+        self.logger.debug(result.shape)
         self.logger.debug(
             f"The model has generated the image in {time.time()-mani} seconds!"
         )
@@ -205,7 +206,7 @@ class Inference:
         ):
             result = self.cuda_cv2.operate(
                 frame=result,
-                width=self.virtual_cam_res_y,
+                width=self.virtual_cam_res_x*self.virtual_cam_res_y//result_height,
                 height=self.virtual_cam_res_y,
             )
         x_offset = (self.virtual_cam_res_x - result_width) // 2
@@ -234,7 +235,15 @@ class Inference:
                 send_to_cam=True,
             )
         else:
-            cam.send(pad)
+            self.cuda_cv2.operate(
+                cam=cam,
+                frame=pad,
+                width=self.virtual_cam_res_x,
+                height=self.virtual_cam_res_y,
+                flip=False,
+                color=False,
+                send_to_cam=True,
+            )
             self.logger.debug(
                 f"Manipulation without background took {time.time()-mani} seconds!"
             )
@@ -408,7 +417,6 @@ class Inference:
                 self.logger.error(e)
                 self.source_image_path = None
                 return e
-
     def set_source(self, source_img_path: str):
         if source_img_path == self.source_image_path:
             pass
