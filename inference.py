@@ -78,6 +78,7 @@ class Inference:
         self.dst_pts = None
         self.temp_source = None
         self.temp_green = None
+        self.set_background=True
         self.device = device
         self.session = ort.InferenceSession(
             f"{self.script_dir}/pretrained_weights/modnet/modnet_photographic_portrait_matting.onnx",
@@ -377,6 +378,7 @@ class Inference:
         return frame
 
     def postprocess(self, pred, shape):
+        pred=np.squeeze(pred)
         pred = self.cuda_cv2.operate(frame=pred, width=shape[1], height=shape[0])
         pred = np.expand_dims(pred, axis=2)
         return pred
