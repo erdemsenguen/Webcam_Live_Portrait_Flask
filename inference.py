@@ -162,7 +162,7 @@ class Inference:
                     self.logger.debug(
                         f"Source image set took {time.time()-im_time} seconds"
                     )
-                if is_face:
+                if is_face and self.img_rgb is not None:
                     if self.source_image_path:
                         mani_time = time.time()
                         self.manipulation(cam=cam, frame=frame)
@@ -192,68 +192,55 @@ class Inference:
             self.img_rgb,
             frame,
         )
-        if result is None or self.img_rgb is None:
-            self.logger.debug("Execute frame is not ready yet, skipping frames.")
+        self.first_iter = False
+        self.logger.debug(
+            f"The model has generated the image in {time.time()-mani} seconds!"
+        )
+        result_height, result_width = result.shape[:2]
+        if (
+            result_height > self.virtual_cam_res_y
+            or result_width > self.virtual_cam_res_x
+        ):
+            result = self.cuda_cv2.operate(
+                frame=result,
+                width=self.virtual_cam_res_x
+                * self.virtual_cam_res_y
+                // result_height,
+                height=self.virtual_cam_res_y,
+            )
+        x_offset = (self.virtual_cam_res_x - result_width) // 2
+        y_offset = self.virtual_cam_res_y - result_height
+        pad = self.pad.copy()
+        pad[
+            y_offset : y_offset + result_height, x_offset : x_offset + result_width
+        ] = result
+        if self.background_image is not None:
+            background = self.background_image
+            out = self.background_blur(pad, background)
+            if self.green_screen and self.green_img is not None:
+                out = self.overlay_on_monitor(self.green_img, out)
             self.cuda_cv2.operate(
                 cam=cam,
-                frame=frame,
+                frame=out,
                 width=self.virtual_cam_res_x,
                 height=self.virtual_cam_res_y,
                 flip=False,
                 color=False,
                 send_to_cam=True,
             )
-            return
         else:
-            self.first_iter = False
-            self.logger.debug(
-                f"The model has generated the image in {time.time()-mani} seconds!"
+            self.cuda_cv2.operate(
+                cam=cam,
+                frame=pad,
+                width=self.virtual_cam_res_x,
+                height=self.virtual_cam_res_y,
+                flip=False,
+                color=False,
+                send_to_cam=True,
             )
-            result_height, result_width = result.shape[:2]
-            if (
-                result_height > self.virtual_cam_res_y
-                or result_width > self.virtual_cam_res_x
-            ):
-                result = self.cuda_cv2.operate(
-                    frame=result,
-                    width=self.virtual_cam_res_x
-                    * self.virtual_cam_res_y
-                    // result_height,
-                    height=self.virtual_cam_res_y,
-                )
-            x_offset = (self.virtual_cam_res_x - result_width) // 2
-            y_offset = self.virtual_cam_res_y - result_height
-            pad = self.pad.copy()
-            pad[
-                y_offset : y_offset + result_height, x_offset : x_offset + result_width
-            ] = result
-            if self.background_image is not None:
-                background = self.background_image
-                out = self.background_blur(pad, background)
-                if self.green_screen and self.green_img is not None:
-                    out = self.overlay_on_monitor(self.green_img, out)
-                self.cuda_cv2.operate(
-                    cam=cam,
-                    frame=out,
-                    width=self.virtual_cam_res_x,
-                    height=self.virtual_cam_res_y,
-                    flip=False,
-                    color=False,
-                    send_to_cam=True,
-                )
-            else:
-                self.cuda_cv2.operate(
-                    cam=cam,
-                    frame=pad,
-                    width=self.virtual_cam_res_x,
-                    height=self.virtual_cam_res_y,
-                    flip=False,
-                    color=False,
-                    send_to_cam=True,
-                )
-                self.logger.debug(
-                    f"Manipulation without background took {time.time()-mani} seconds!"
-                )
+            self.logger.debug(
+                f"Manipulation without background took {time.time()-mani} seconds!"
+            )
 
     def overlay_on_monitor(self, background_img, overlay_img):
         if self.dst_pts is not None:
