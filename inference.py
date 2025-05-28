@@ -216,18 +216,20 @@ class Inference:
         ] = result
         if self.background_image is not None:
             background = self.background_image
-            out = self.background_blur(pad, background)
-            if self.green_screen and self.green_img is not None:
-                out = self.overlay_on_monitor(self.green_img, out)
-            self.cuda_cv2.operate(
-                cam=cam,
-                frame=out,
-                width=self.virtual_cam_res_x,
-                height=self.virtual_cam_res_y,
-                flip=False,
-                color=False,
-                send_to_cam=True,
-            )
+            if self.set_background==True:
+                out = self.background_blur(pad, background)
+                if self.green_screen and self.green_img is not None:
+                    out = self.overlay_on_monitor(self.green_img, out)
+                self.cuda_cv2.operate(
+                    cam=cam,
+                    frame=out,
+                    width=self.virtual_cam_res_x,
+                    height=self.virtual_cam_res_y,
+                    flip=False,
+                    color=False,
+                    send_to_cam=True,
+                )
+            self.set_background=True
         else:
             self.cuda_cv2.operate(
                 cam=cam,
@@ -392,6 +394,7 @@ class Inference:
             self.first_iter = True
             self.source_image_path = self.temp_source
             self.background_image = None
+            self.set_background= False
             self.temp_source = None
             try:
                 self.temp_green = None
