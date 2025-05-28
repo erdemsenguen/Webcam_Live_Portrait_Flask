@@ -76,6 +76,8 @@ class Inference:
         self.cuda_cv2 = FrameProcessor()
         self.green_img = None
         self.dst_pts = None
+        self.temp_source = None
+        self.temp_green = None
         self.device = device
         self.session = ort.InferenceSession(
             f"{self.script_dir}/pretrained_weights/modnet/modnet_photographic_portrait_matting.onnx",
@@ -140,6 +142,8 @@ class Inference:
                     self.face_detector_model,
                 )
                 self.logger.debug(f"Face detector took {time.time()-face_time}")
+                self.temp_source_setter()
+                self.temp_green_setter()
                 if self.first_iter and self.source_image_path:
                     self.logger.debug("DeepFake source image is set!")
                     im_time = time.time()
@@ -375,22 +379,20 @@ class Inference:
         else:
             self.backend = "unknown"
 
-    def set_source(self, source_img_path: str):
-        if source_img_path == self.source_image_path:
-            pass
-        else:
+    def temp_source_setter(self):
+        if self.temp_source != self.source_image_path:
             self.first_iter = True
             try:
                 self.green_screen = None
                 self.previous_green_screen = None
                 self.change_green_screen = True
-                load_image_rgb(source_img_path)
-                self.source_image_path = source_img_path
+                load_image_rgb(self.temp_source)
+                self.source_image_path = self.temp_source
                 self.logger.debug("Image set successfully!")
-                if source_img_path.endswith("7.jpg") or source_img_path.endswith(
-                    "11.jpg"
-                ):
-                    self.background_image_path = None
+                if self.source_img_path.endswith(
+                    "7.jpg"
+                ) or self.source_img_path.endswith("11.jpg"):
+                    self.temp_background = None
                 else:
                     self.background_image_path = random.choice(self.background_images)
                     self.background_image = cv2.imread(self.background_image_path)
@@ -404,9 +406,15 @@ class Inference:
                 self.source_image_path = None
                 return e
 
-    def set_greenscreen(self, green_screen_path: str):
-        self.green_screen = green_screen_path
-        if self.green_screen != self.previous_green_screen:
+    def set_source(self, source_img_path: str):
+        if source_img_path == self.source_image_path:
+            pass
+        else:
+            self.temp_source = source_img_path
+
+    def temp_green_setter(self):
+        if self.temp_green != self.green_screen:
+            self.green_screen = self.temp_green
             self.change_green_screen = True
             self.green_img = cv2.imread(self.green_screen)
             if self.green_screen and self.green_img is not None:
@@ -420,6 +428,11 @@ class Inference:
         else:
             self.change_green_screen = False
             self.green_screen = None
+            self.green_img = None
+
+    def set_greenscreen(self, green_screen_path: str):
+        if green_screen_path != self.green_screen:
+            self.temp_green = green_screen_path
 
     def set_parameters(self, **kwargs):
         self.live_portrait_pipeline.update_values(kwargs)
