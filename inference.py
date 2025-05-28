@@ -215,13 +215,8 @@ class Inference:
         pad[y_offset : y_offset + result_height, x_offset : x_offset + result_width] = (
             result
         )
-        if self.background_image_path:
-            background = self.cuda_cv2.operate(
-                frame=self.background_image,
-                width=self.virtual_cam_res_x,
-                height=self.virtual_cam_res_y,
-                color=True,
-            )
+        if self.background_image is not None:
+            background = self.background_image
             out = self.background_blur(pad, background)
             if self.green_screen and self.green_img is not None:
                 out = self.overlay_on_monitor(self.green_img, out)
@@ -394,11 +389,11 @@ class Inference:
         if self.temp_source != self.source_image_path and self.temp_source is not None:
             self.first_iter = True
             self.source_image_path=self.temp_source
+            self.background_image=None
             try:
                 self.green_screen = None
                 self.previous_green_screen = None
                 self.change_green_screen = True
-                load_image_rgb(self.source_image_path)
                 self.logger.debug("Image set successfully!")
                 if self.source_image_path.endswith(
                     "7.jpg"
