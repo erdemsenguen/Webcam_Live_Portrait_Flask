@@ -353,6 +353,7 @@ class Inference:
         input_blob = self.preprocess(frame)
         result = self.session.run(None, {"input": input_blob})[0]
         mask = self.postprocess(result, frame.shape[:2])
+        self.logger.debug(f"[MASK] min={mask.min()}, max={mask.max()}, shape={mask.shape}")
         fg = frame.astype(np.float32) / 255.0
         bg = background_img.astype(np.float32) / 255.0
         composite = fg * mask + bg * (1 - mask)
