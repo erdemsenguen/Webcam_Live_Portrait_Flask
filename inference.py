@@ -192,6 +192,9 @@ class Inference:
             self.img_rgb,
             frame,
         )
+        if result is None:
+            self.logger.error("generate_frame() returned None")
+            return
         self.logger.debug(
             f"The model has generated the image in {time.time()-mani} seconds!"
         )
