@@ -391,6 +391,7 @@ class Inference:
             self.first_iter = True
             self.source_image_path=self.temp_source
             self.background_image=None
+            self.temp_source=None
             try:
                 self.temp_green = None
                 self.green_screen = None
@@ -408,6 +409,7 @@ class Inference:
                         frame=self.background_image,
                         width=self.virtual_cam_res_x,
                         height=self.virtual_cam_res_y,
+                        color=True,
                     )
                 return "Image set successfully."
             except Exception as e:
