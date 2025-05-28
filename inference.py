@@ -392,6 +392,7 @@ class Inference:
             self.source_image_path=self.temp_source
             self.background_image=None
             try:
+                self.temp_green = None
                 self.green_screen = None
                 self.previous_green_screen = None
                 self.change_green_screen = True
