@@ -162,7 +162,6 @@ class Inference:
                     self.logger.debug(
                         f"Source image set took {time.time()-im_time} seconds"
                     )
-                    self.first_iter = False
                 if is_face:
                     if self.source_image_path:
                         mani_time = time.time()
@@ -206,6 +205,7 @@ class Inference:
             )
             return
         else:
+            self.first_iter = False
             self.logger.debug(
                 f"The model has generated the image in {time.time()-mani} seconds!"
             )
