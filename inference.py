@@ -419,7 +419,7 @@ class Inference:
             self.temp_source = source_img_path
 
     def temp_green_setter(self):
-        if self.temp_green != self.green_screen:
+        if self.temp_green != self.green_screen and self.temp_green is not None:
             self.green_screen = self.temp_green
             self.change_green_screen = True
             self.green_img = cv2.imread(self.green_screen)
@@ -431,14 +431,15 @@ class Inference:
                     color=True,
                 )
             self.green_screen_change(self.green_img)
-        else:
-            self.change_green_screen = False
+        elif self.temp_green is None:
             self.green_screen = None
             self.green_img = None
 
     def set_greenscreen(self, green_screen_path: str):
         if green_screen_path != self.green_screen:
             self.temp_green = green_screen_path
+        if green_screen_path == self.green_screen:
+            self.temp_green = None
 
     def set_parameters(self, **kwargs):
         self.live_portrait_pipeline.update_values(kwargs)
