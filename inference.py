@@ -340,6 +340,9 @@ class Inference:
         ) = (None, None, None, None, None, None, None)
         self.active = False
         self.first_iter = True
+        self.source_image_path=None
+        self.temp_green=None
+        self.temp_source=None
         self.cuda_cv2.operate(
             cam=cam,
             frame=frame,
