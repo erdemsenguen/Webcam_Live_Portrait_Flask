@@ -14,6 +14,7 @@ class APIServer:
         stop_funct: callable,
         status_funct: callable,
         run_funct: callable,
+        active_img_funct:callable,
         set_param: callable,
         set_greenscreen: callable,
         host="127.0.0.1",
@@ -35,6 +36,7 @@ class APIServer:
         self.stop_funct = stop_funct
         self.status_funct = status_funct
         self.run_funct = run_funct
+        self.active_img_funct=active_img_funct
         self.green_funct = set_greenscreen
         self.file_names = [
             os.path.splitext(f)[0]
@@ -100,13 +102,14 @@ class APIServer:
                         400,
                     )
             elif request.method == "GET":
-                return jsonify({"status": self.status_funct()}), 200
-
+                if self.status_funct():
+                    return jsonify({"status": self.active_img_funct()}), 200
+                else:
+                    return jsonify({"status": False}), 200
         @self.app.route("/api/run", methods=["GET"])
         def handle_run_request():
             self.run_funct()
             return jsonify({"status": "Running"}), 200
-
         @self.app.route("/api/green", methods=["POST"])
         def handle_green_screen_request():
             json_data = request.get_json()

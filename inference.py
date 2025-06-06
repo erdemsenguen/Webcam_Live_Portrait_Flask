@@ -460,6 +460,9 @@ class Inference:
     def status_funct(self):
         return self.active
 
+    def active_image(self):
+        return os.path.splitext(os.path.basename(self.source_image_path))[0]
+
     def set_run(self):
         self.running = True
 
