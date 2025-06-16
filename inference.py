@@ -31,9 +31,8 @@ class Inference:
         self.logger = logging.getLogger(__name__)
         self.virtual_cam_res_x = 1920
         self.virtual_cam_res_y = 1080
-        self.cap = WebcamStream(
-            width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, src=src
-        )
+        self.src=src
+        self.cap = None
         self.is_face = None
         self.first_iter = True
         # specify configs for inference
@@ -122,6 +121,7 @@ class Inference:
                     black_image = None
                     break
             while True:
+                self.cap=WebcamStream(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, src=self.src)
                 loop_start = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
