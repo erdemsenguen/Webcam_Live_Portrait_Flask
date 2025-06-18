@@ -25,10 +25,10 @@ To start an inference session that will be controlled with API inputs, you requi
 
 # Requirements 
 
-* **Linux**
+* **Ubuntu 22.04**
 * **Python 3.10**
-* **Cuda 11.8** with **cuDNN 8.8** for Nvidia GPU / **DirectML** for AMD GPU on Windows.
-* **OBS 31.0.2** for Windows and Mac, **v4l2loopback** for Linux.
+* **Cuda 11.8** with **cuDNN 8.8** / Nvidia GPU
+* **v4l2loopback** for Linux.
 * [modnet_photographic_portrait_matting.onnx](https://huggingface.co/TheEeeeLin/HivisionIDPhotos_matting/blob/034769305faf641ad94edfac654aba13be06e816/modnet_photographic_portrait_matting.onnx) in `pretrained_weights/modnet/` path
 * [This drive](https://drive.google.com/drive/folders/1UtKgzKjFAOmZkhNK-OYT0caJ_w2XAnib) unzipped into the pretrained_weights folder (With all the subfolders).
 
