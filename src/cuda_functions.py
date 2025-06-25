@@ -40,6 +40,8 @@ class FrameProcessor:
             gpu_img = self.flip_img(gpu_img)
         if self.has_cuda>0:
             img = gpu_img.download()
+        else:
+            img = gpu_img
         if send_to_cam:
             cam.send(img)
         return img
