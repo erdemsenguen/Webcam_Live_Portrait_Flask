@@ -17,7 +17,7 @@ class APIServer:
         active_img_funct:callable,
         set_param: callable,
         set_greenscreen: callable,
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=5001,
         source_img_dir: str = None,
         source_green_dir: str = None,
