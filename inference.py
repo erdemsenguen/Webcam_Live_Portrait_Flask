@@ -121,7 +121,8 @@ class Inference:
                     black_image = None
                     break
             while True:
-                self.cap=WebcamStream(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, src=self.src)
+                if self.cap is None:
+                    self.cap = WebcamStream(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, src=self.src)
                 loop_start = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
