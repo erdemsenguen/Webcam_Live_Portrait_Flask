@@ -78,6 +78,7 @@ class Inference:
         self.temp_source = None
         self.temp_green = None
         self.set_background=True
+        self.first_source = True
         self.device = device
         self.session = ort.InferenceSession(
             f"{self.script_dir}/pretrained_weights/modnet/modnet_photographic_portrait_matting.onnx",
@@ -123,6 +124,25 @@ class Inference:
             while True:
                 if self.cap is None:
                     self.cap = WebcamStream(width=self.virtual_cam_res_x, height=self.virtual_cam_res_y, src=self.src)
+                if self.first_source is False:
+                    self.first_source = None
+                    (
+                        self.x_s,
+                        self.f_s,
+                        self.R_s,
+                        self.x_s_info,
+                        self.lip_delta_before_animation,
+                        self.crop_info,
+                        self.img_rgb,
+                    ) = (None, None, None, None, None, None, None)
+                    self.active = False
+                    self.first_iter = True
+                    self.source_image_path=None
+                    self.temp_green=None
+                    self.temp_source=None
+                if self.first_source is True:
+                    self.first_source = False
+                    self.set_source(f"{os.path.dirname(self.script_dir)}/photos/1.jpg")
                 loop_start = time.time()
                 ret, frame = self.cap.read()
                 if not ret:
